@@ -29,6 +29,10 @@ MT_EXP = {"MT7": ["MiniGrid-DoorKey-6x6-v0", "MiniGrid-DistShift1-v0",
           }
 
 def run_experiment(args, save_dir, exp_id = 0, seed = None):
+    """
+    Run the experiment,
+    return the metrics
+    """
     import matplotlib
     matplotlib.use('Agg') 
 
@@ -48,16 +52,16 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
     gamma = args.gamma
     gamma_eval = args.gamma_eval
     
-    mdp = []
+    env_list = []
     for env_name_i in env_names:
-        mdp.append(MiniGrid(env_name_i, horizon = horizon, gamma=gamma, render_mode=args.render_mode))
+        env_list.append(MiniGrid(env_name_i, horizon = horizon, gamma=gamma, render_mode=args.render_mode))
 
-    n_contexts = len(mdp)
+    n_contexts = len(env_list)
 
     batch_size = args.batch_size
     train_frequency = args.train_frequency
 
-    # Policy
+    # TODO: actor 
     actor_network = getattr(Network, args.actor_network)#
     actor_n_features = args.actor_n_features#
     lr_actor = args.lr_actor 
@@ -74,14 +78,14 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
 
     policy = MTBoltzmannTorchPolicy(
             actor_network,
-            mdp[0].info.observation_space.shape,
-            (mdp[0].info.action_space.n,),
+            env_list[0].info.observation_space.shape,
+            (env_list[0].info.action_space.n,),
             **actor_params)
     
     actor_optimizer = {'class': optim.Adam,
                         'params': {'lr': lr_actor, 'betas': (0.9, 0.999)}}#
     
-    # critic
+    # TODO critic
     critic_network = getattr(Network, args.critic_network)#
     critic_n_features = args.critic_n_features#
     lr_critic = args.lr_critic #
@@ -97,7 +101,7 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
                         orthogonal=args.orthogonal,
                         learning_rate = lr_critic,
                         n_experts=args.n_experts,
-                        input_shape = mdp[0].info.observation_space.shape,
+                        input_shape = env_list[0].info.observation_space.shape,
                         output_shape=(1,))
     
     # alg
@@ -126,19 +130,19 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
         wandb.init(name = "seed_"+str(exp_id if seed is None else seed), project = "MOORE", group = f"minigrid_{args.env_name}", mode="offline", job_type=args.exp_name, config=vars(args))
 
     # Agent
-    agent = MTPPO(mdp[0].info, policy, n_contexts=n_contexts, **alg_params)
+    agent = MTPPO(env_list[0].info, policy, n_contexts=n_contexts, **alg_params)
 
     single_logger.info(agent._V.model.network)
     single_logger.info(agent.policy._logits.model.network)
 
     os.makedirs(save_dir, exist_ok=True)
 
-    # Algorithm
-    core = Core(agent, mdp)
+    # 定义agent和环境
+    core = Core(agent, env_list)
 
     # # RUN
     # metrics
-    metrics = {mdp_i.env_name: {} for mdp_i in mdp}
+    metrics = {mdp_i.env_name: {} for mdp_i in env_list}
     for key, value in metrics.items():
         value.update({"MinReturn": []})
         value.update({"MaxReturn": []})
@@ -148,7 +152,9 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
 
     current_all_average_return = 0.0
     current_all_average_discounted_return = 0.0
-    for c, mdp_c in enumerate(mdp):
+    # ---------------------------------------- 评估初始策略 -----------------------------------
+    # 对环境列表中的每一个环境都进行评估，并保存评估结果
+    for c, mdp_c in enumerate(env_list):
         # random policy evaluation
         core.eval = True
         agent.policy.set_beta(beta)
@@ -184,15 +190,19 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
         wandb.log({"all_minigrid/AverageReturn": current_all_average_return/ n_contexts, 
                    "all_minigrid/AverageDiscountedReturn": current_all_average_discounted_return/ n_contexts}, step = 0, commit=True)
     
-    
+    # ---------------------------------------- 主程序 -----------------------------------
+    # 默认100个epoch
     for n in trange(n_epochs):
         core.eval = False
+        # beta是一个scale factor，乘在actor的输出上，还不知道是用来干啥的
         agent.policy.set_beta(beta)
-        core.learn(n_steps=n_steps, n_steps_per_fit=train_frequency, render=args.render_train)
+        # quiet 不会出现这么多bar；n_steps epoch内的步数；
+        core.learn(n_steps=n_steps, n_steps_per_fit=train_frequency, render=args.render_train, quiet=True)
 
         current_all_average_return = 0.0
         current_all_average_discounted_return = 0.0
-        for c, mdp_c in enumerate(mdp):
+        # --------------------------------- 训练完了之后，再次评估 ----------------------------------------
+        for c, mdp_c in enumerate(env_list):
             core.eval = True
             agent.policy.set_beta(beta)
             core.current_idx = c
@@ -227,7 +237,7 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
             wandb.log({"all_minigrid/AverageReturn": current_all_average_return/ n_contexts, 
                        "all_minigrid/AverageDiscountedReturn": current_all_average_discounted_return/ n_contexts}, step = n+1, commit=True)
 
-
+    # ---------------------------------------- 训练结束 ----------------------------------------
     if args.wandb:
         wandb.finish()
 
@@ -275,7 +285,7 @@ if __name__ == '__main__':
                               for i in range(args.n_exp))
     else:
         out = run_experiment(args, save_dir)
-    
+    # save the results 
     if args.n_exp > 1:
         for key, value in out[0].items():
             for metric_key in list(value.keys()):

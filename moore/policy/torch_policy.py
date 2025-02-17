@@ -240,6 +240,7 @@ class MTBoltzmannTorchPolicy(TorchPolicy):
         return torch.mean(self.distribution_t(state).entropy())
 
     def distribution_t(self, state):
+        # 根据state返回一个分布
         c, state = state[0], state[1]
         logits = self._logits(state, c=c, **self._predict_params, output_tensor=True) * self._beta(state.cpu().numpy()) # add .cpu()
         return MTBoltzmannTorchPolicy.CategoricalWrapper(logits)
