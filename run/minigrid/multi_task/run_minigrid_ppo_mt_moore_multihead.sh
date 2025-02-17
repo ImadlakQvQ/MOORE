@@ -2,6 +2,8 @@
 
 cd ../../../
 
+export WANDB_MODE='offline'
+
 ENV_NAME=$1
 N_EXPERTS=$2
 

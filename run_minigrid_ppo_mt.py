@@ -123,7 +123,7 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
         args.wandb = False
 
     if args.wandb:
-        wandb.init(name = "seed_"+str(exp_id if seed is None else seed), project = "MOORE", group = f"minigrid_{args.env_name}", mode="offline",job_type=args.exp_name, entity=args.wandb_entity, config=vars(args))
+        wandb.init(name = "seed_"+str(exp_id if seed is None else seed), project = "MOORE", group = f"minigrid_{args.env_name}", mode="offline", job_type=args.exp_name, config=vars(args))
 
     # Agent
     agent = MTPPO(mdp[0].info, policy, n_contexts=n_contexts, **alg_params)
