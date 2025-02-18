@@ -10,4 +10,4 @@ python run_minigrid_ppo_mt.py  --n_exp 30 \
                             --n_epochs 100 --n_steps 2000  --n_episodes_test 16 --train_frequency 2000 --lr_actor 1e-3 --lr_critic 1e-3 \
                             --critic_network MiniGridPPOMixtureMHNetwork --critic_n_features 128 --orthogonal --n_experts ${N_EXPERTS} \
                             --actor_network MiniGridPPOMixtureMHNetwork --actor_n_features 128 \
-                            --batch_size 256 --gamma 0.99 --wandb --wandb_entity [WANDB_ENTITY]
+                            --batch_size 256 --gamma 0.99 --wandb # --wandb_entity [WANDB_ENTITY]
