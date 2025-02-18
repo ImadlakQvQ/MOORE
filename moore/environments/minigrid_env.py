@@ -27,7 +27,7 @@ class MiniGrid(Environment):
     are managed in a separate class.
 
     """
-    def __init__(self, name, horizon=None, gamma=0.99, render_mode = "rgb_array", wrappers=[ImgObsWrapper], wrappers_args=None,
+    def __init__(self, name, horizon=None, gamma=0.99, render_mode = "rgb_array", description=None, wrappers=[ImgObsWrapper], wrappers_args=None,
                  **env_args):
         """
         Constructor.
@@ -56,7 +56,7 @@ class MiniGrid(Environment):
 
         self.env = gym.make(name, render_mode=render_mode, **env_args)
         self.env_name = name
-
+        self.description = description
         self._render_dt = self.env.unwrapped.dt if hasattr(self.env.unwrapped, "dt") else 0.0
         self._render_mode = render_mode
 

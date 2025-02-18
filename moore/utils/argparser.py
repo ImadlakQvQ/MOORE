@@ -5,7 +5,7 @@ def argparser():
      parser = argparse.ArgumentParser()
 
      arg_mdp = parser.add_argument_group('mdp')
-     arg_mdp.add_argument('--env_name', type=str, help='Name of the environment.')#
+     arg_mdp.add_argument('--env_name', type=str, default='MT3', help='Name of the environment.')#
      arg_mdp.add_argument("--horizon", type=int)
      arg_mdp.add_argument("--gamma", type=float, default=0.98)
      arg_mdp.add_argument("--gamma_eval", type=float, default=1.)

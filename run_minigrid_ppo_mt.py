@@ -20,6 +20,7 @@ import wandb
 import os
 import pickle
 from joblib import delayed, Parallel
+import numpy as np
 
 MT_EXP = {"MT7": ["MiniGrid-DoorKey-6x6-v0", "MiniGrid-DistShift1-v0",
                            "MiniGrid-RedBlueDoors-6x6-v0", "MiniGrid-LavaGapS7-v0",
@@ -160,7 +161,7 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
         agent.policy.set_beta(beta)
         core.current_idx = c
         
-        dataset = core.evaluate(n_episodes=n_episodes_test, render=args.render_eval)
+        dataset = core.evaluate(n_episodes=n_episodes_test, render=args.render_eval, quiet=True)
         min_J, max_J, mean_J, mean_discounted_J, _ = get_stats(dataset, gamma, gamma_eval)
         metrics[mdp_c.env_name]["MinReturn"].append(min_J)
         metrics[mdp_c.env_name]["MaxReturn"].append(max_J)
@@ -206,7 +207,7 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
             core.eval = True
             agent.policy.set_beta(beta)
             core.current_idx = c
-            dataset = core.evaluate(n_episodes=n_episodes_test, render=(args.render_eval if n%args.render_interval == 0 and exp_id == 0 else False))
+            dataset = core.evaluate(n_episodes=n_episodes_test, render=(args.render_eval if n%args.render_interval == 0 and exp_id == 0 else False), quiet=True)
             min_J, max_J, mean_J, mean_discounted_J, _ = get_stats(dataset, gamma, gamma_eval)
             metrics[mdp_c.env_name]["MinReturn"].append(min_J)
             metrics[mdp_c.env_name]["MaxReturn"].append(max_J)
