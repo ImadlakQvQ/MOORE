@@ -2,12 +2,12 @@
 #SBATCH --account=def-bboulet
 #SBATCH --cpus-per-task=6
 #SBATCH --mem=80gb
-#SBATCH --output=cc_log/%j.out
+#SBATCH --output=log_cc/%j.out
 #SBATCH --time=0-00:20
 
-module load StdEnv/2020 cmake gcc python/3.8.10
+module load StdEnv/2020 cmake gcc opencv python/3.8.10
 source ~/.venv/moore_minigrid/bin/activate
-pip install numpy
+
 cd project/def-bboulet/imadlak/program/MOORE
 
 export WANDB_MODE='offline'
