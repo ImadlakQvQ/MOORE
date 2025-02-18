@@ -1,0 +1,27 @@
+
+Lmod 已经自动将 "intel/2020.1.217" 替换为 "gcc/9.3.0"
+
+
+Due to MODULEPATH changes, the following have been reloaded:
+  1) mii/1.1.2
+
+The following have been reloaded with a version change:
+  1) StdEnv/2023 => StdEnv/2020
+  2) blis/0.9.0 => blis/0.8.1
+  3) flexiblas/3.3.1 => flexiblas/3.0.4
+  4) gcc/12.3 => gcc/9.3.0
+  5) gcccore/.12.3 => gcccore/.9.3.0
+  6) gentoo/2023 => gentoo/2020
+  7) libfabric/1.18.0 => libfabric/1.10.1
+  8) openmpi/4.1.5 => openmpi/4.0.3
+  9) ucx/1.14.1 => ucx/1.8.0
+
+/localscratch/spool/slurmd/job40389698/slurm_script: line 10: cd: project/def-bboulet/imadlak/program/MOORE: No such file or directory
+Traceback (most recent call last):
+  File "run_minigrid_ppo_mt.py", line 2, in <module>
+    from mushroom_rl.core import Logger
+  File "/home/imadlak/.venv/moore_minigrid/lib/python3.8/site-packages/mushroom_rl/core/__init__.py", line 2, in <module>
+    from .environment import Environment, MDPInfo
+  File "/home/imadlak/.venv/moore_minigrid/lib/python3.8/site-packages/mushroom_rl/core/environment.py", line 2, in <module>
+    import numpy as np
+ModuleNotFoundError: No module named 'numpy'

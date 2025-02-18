@@ -56,7 +56,6 @@ mushroom-rl==1.9.2
 nest-asyncio 
 networkx==3.1
 numpy==1.22.0
-numpy-ml==0.1.2
 nvidia-cublas-cu11==11.10.3.66
 nvidia-cuda-cupti-cu11==11.7.101
 nvidia-cuda-nvrtc-cu11==11.7.99

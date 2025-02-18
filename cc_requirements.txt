@@ -84,10 +84,6 @@ notebook==6.5.2+computecanada
 notebook-shim==0.2.2+computecanada
 numpy==1.24.2+computecanada
 numpy-ml==0.1.2
-opencv-contrib-python==4.8.0
-opencv-contrib-python-headless==4.8.0
-opencv-python==4.8.0
-opencv-python-headless==4.8.0
 packaging==23.0+computecanada
 pandas==1.5.3+computecanada
 pandocfilters==1.5.0+computecanada
