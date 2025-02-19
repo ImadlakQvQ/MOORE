@@ -6,8 +6,8 @@ from mushroom_rl.utils.parameters import Parameter
 # deeplearning
 import torch.optim as optim
 import torch.nn.functional as F
-from moore.core import Core
-from moore.algorithms.actor_critic import MTPPO
+from moore.core import MEMTCore
+from moore.algorithms.actor_critic import MEMTPPO
 from moore.policy import MTBoltzmannTorchPolicy
 from moore.environments import MiniGrid
 from moore.utils.argparser import argparser
@@ -22,7 +22,7 @@ import pickle
 from joblib import delayed, Parallel
 import numpy as np
 
-# 将这些描述转换到一个统一的任务空间
+# TODO 将这些描述转换到一个统一的任务空间
 MT_EXP = {
     "MT7": {
         "MiniGrid-DoorKey-6x6-v0": "A small grid-world environment where the agent must pick up a key and open a door to reach the goal.",
@@ -66,13 +66,16 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
 
     # MDP
     env_names = MT_EXP[args.env_name]
+
     horizon = args.horizon
     gamma = args.gamma
     gamma_eval = args.gamma_eval
-    
+    # MT#中有几个 list中就有几个
     env_list = []
-    for env_name_i, describtion_i in env_names:
-        env_list.append(MiniGrid(env_name_i, horizon = horizon, gamma=gamma, render_mode=args.render_mode, description=describtion_i))
+    descriptions = []
+    for env_name_i, description_i in env_names:
+        env_list.append(MiniGrid(env_name_i, horizon = horizon, gamma=gamma, render_mode=args.render_mode, description=description_i))
+        descriptions.append(description_i)
 
     # 设置任务空间维度
     n_contexts = len(env_list)
@@ -81,7 +84,7 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
     train_frequency = args.train_frequency
 
     # TODO: actor 
-    actor_network = getattr(Network, args.actor_network)#
+    actor_network = getattr(Network, "MiniGridPPOMEMTNetwork")
     actor_n_features = args.actor_n_features#
     lr_actor = args.lr_actor 
     beta=1.
@@ -93,8 +96,9 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
                         learning_rate = lr_actor,
                         n_experts=args.n_experts,
                         use_cuda=args.use_cuda,
+                        descriptions=descriptions
                         )
-
+    # 是在同一个环境中执行不同的任务，所以观测空间与动作空间相同
     policy = MTBoltzmannTorchPolicy(
             actor_network,
             env_list[0].info.observation_space.shape,
@@ -105,7 +109,7 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
                         'params': {'lr': lr_actor, 'betas': (0.9, 0.999)}}#
     
     # TODO critic
-    critic_network = getattr(Network, args.critic_network)#
+    critic_network = getattr(Network, "MiniGridPPOMEMTNetwork")
     critic_n_features = args.critic_n_features#
     lr_critic = args.lr_critic #
     critic_fit_params = None
@@ -121,7 +125,8 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
                         learning_rate = lr_critic,
                         n_experts=args.n_experts,
                         input_shape = env_list[0].info.observation_space.shape,
-                        output_shape=(1,))
+                        output_shape=(1,)
+                        )
     
     # alg
     eps = 0.2
@@ -135,7 +140,8 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
             lam=lam,
             actor_optimizer = actor_optimizer,
             critic_params = critic_params,
-            critic_fit_params=critic_fit_params)
+            critic_fit_params=critic_fit_params,
+            descriptions=descriptions)
 
     if args.debug:
         batch_size = 8
@@ -149,7 +155,7 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
         wandb.init(name = "seed_"+str(exp_id if seed is None else seed), project = "MOORE", group = f"minigrid_{args.env_name}", mode="offline", job_type=args.exp_name, config=vars(args))
 
     # Agent
-    agent = MTPPO(env_list[0].info, policy, n_contexts=n_contexts, **alg_params)
+    agent = MEMTPPO(env_list[0].info, policy, n_contexts=n_contexts, **alg_params)
 
     single_logger.info(agent._V.model.network)
     single_logger.info(agent.policy._logits.model.network)
@@ -157,7 +163,7 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
     os.makedirs(save_dir, exist_ok=True)
 
     # 定义agent和环境
-    core = Core(agent, env_list)
+    core = MEMTCore(agent, env_list)
 
     # # RUN
     # metrics
@@ -178,6 +184,7 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
         core.eval = True
         agent.policy.set_beta(beta)
         core.current_idx = c
+        description = mdp_c.description
         
         dataset = core.evaluate(n_episodes=n_episodes_test, render=args.render_eval, quiet=True)
         min_J, max_J, mean_J, mean_discounted_J, _ = get_stats(dataset, gamma, gamma_eval)
@@ -281,12 +288,12 @@ if __name__ == '__main__':
     if args.seed is not None:
         assert len(args.seed) == args.n_exp
 
-    # logging
+    # logging               args.env_name=MT3
     results_dir = os.path.join(args.results_dir, "minigrid", "MT", args.env_name)
 
     logger = Logger(args.exp_name, results_dir=results_dir, log_console=True, use_timestamp=args.use_timestamp)
     logger.strong_line()
-    logger.info('Experiment Algorithm: ' + MTPPO.__name__)
+    logger.info('Experiment Algorithm: ' + MEMTPPO.__name__)
     logger.info('Experiment Environment: ' + args.env_name)
     logger.info('Experiment Type: ' + "MT-Baseline")
     logger.info("Experiment Name: " + args.exp_name)

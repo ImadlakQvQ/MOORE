@@ -60,7 +60,7 @@ def compute_gae(V, c, s, ss, r, absorbing, last, gamma, lam):
         gen_adv[ci] = gen_adv_i
     return gen_adv + v, gen_adv
 
-class MTPPO(Agent):
+class MEMTPPO(Agent):
     """
     Multi-Task Variant of Proximal Policy Optimization algorithm.
     "Proximal Policy Optimization Algorithms".
@@ -69,7 +69,7 @@ class MTPPO(Agent):
     """
     def __init__(self, mdp_info, policy, actor_optimizer, critic_params,
                  n_epochs_policy, batch_size, eps_ppo, lam, ent_coeff=0.0,
-                 critic_fit_params=None, n_contexts = 1, env_names=None):
+                 critic_fit_params=None, n_contexts = 1, descriptions=None):
         """
         Constructor.
 
@@ -119,8 +119,7 @@ class MTPPO(Agent):
             _iter='primitive',
             _n_contexts='primitive',
         )
-        self.env_names = env_names
-        
+        self.descriptions=descriptions
         super().__init__(mdp_info, policy, None)
 
         self._device = torch.device("cuda:0" if self.policy.use_cuda else "cpu")

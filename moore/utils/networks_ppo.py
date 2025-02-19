@@ -266,21 +266,21 @@ class MiniGridPPOMixtureMHNetwork(nn.Module):
         if self._use_cuda:
             c = c.cuda()
 
-        c_onehot = F.one_hot(c, num_classes = self._n_contexts)
+        c_onehot = F.one_hot(c, num_classes = self._n_contexts)         # [batch, n_contexts]
 
         # task-weight and task-embeddings
-        w = self._task_encoder(c_onehot.float()).unsqueeze(1)
+        w = self._task_encoder(c_onehot.float()).unsqueeze(1)           # [batch, 1, n_experts]
 
         # image embeddings
-        features_cnn = self.cnn(state.float())
-        features_cnn = torch.permute(features_cnn, (1,0,2))
+        features_cnn = self.cnn(state.float())                          # [n_experts, batch, n_features]
+        features_cnn = torch.permute(features_cnn, (1,0,2))             # [batch, n_experts, n_features]
 
         # task-image embeddings
-        features_cnn = w@features_cnn
-        features_cnn = features_cnn.squeeze(1)
+        features_cnn = w@features_cnn                                   # [batch, 1, n_features]
+        features_cnn = features_cnn.squeeze(1)                          # [batch, n_features]
 
         # only activation after weighting the features 
-        features_cnn = torch.tanh(features_cnn)
+        features_cnn = torch.tanh(features_cnn)                         # [batch, n_features]        
 
         f = torch.zeros(size=(state.shape[0], self._n_output))
         
@@ -411,11 +411,9 @@ class MiniGridPPOMixtureSHNetwork(nn.Module):
 
     def save_task_encoder(self, save_dir):
         torch.save(self._task_encoder.state_dict(), save_dir)
-
-
-
 ###################################################################################################################################################
-class MiniGridPPOMixtureMHNetwork(nn.Module):
+
+class MiniGridPPOMEMTNetwork(nn.Module):
     def __init__(self, input_shape, 
                        output_shape, 
                        n_features,
@@ -424,22 +422,24 @@ class MiniGridPPOMixtureMHNetwork(nn.Module):
                        orthogonal = True,
                        use_cuda = False,
                        task_encoder_bias = False,
+                       descriptions=None,
                        **kwargs):
         
         super().__init__()
 
         self._n_input = input_shape
         self._n_output = output_shape[0]
-
         self._n_contexts = n_contexts
         self._orthogonal = orthogonal
         self._use_cuda = use_cuda
-
+        self.descriptions = descriptions
+        self.context_len = len(descriptions[0])
+        self.num_action_experts = 4
         n_input_channels = self._n_input[-1]
 
-        
-        self._task_encoder = nn.Linear(n_contexts, n_experts, bias = task_encoder_bias)
-
+        # task encoder
+        self._task_encoder = nn.Linear(self.context_len, n_experts, bias = task_encoder_bias)
+        # state encoder [1,3,7 ,7] -> [1, 1024]
         cnn = nn.Sequential(
             nn.Conv2d(n_input_channels, 16, (2, 2)),
             nn.ReLU(),
@@ -462,8 +462,10 @@ class MiniGridPPOMixtureMHNetwork(nn.Module):
                                         mixture_layers.ParallelLayer(cnn))
     
         self._output_heads = nn.ModuleList([])
-
-        for _ in range(self._n_contexts):
+        # router 输入为:(任务embedding+state_embedding)
+        self.action_router = nn.Linear(self.context_len+n_flatten, 4)
+        # TODO 确定后续动作experts数量
+        for _ in range(self.num_action_experts):
 
             input_size = n_flatten
             
@@ -480,43 +482,55 @@ class MiniGridPPOMixtureMHNetwork(nn.Module):
             self._output_heads.append(head)
 
     def forward(self, state, c = None):
-
-        if isinstance(c, int):
-            c = torch.tensor([c])
-
-        if isinstance(c,np.ndarray):
-            c = torch.from_numpy(c)
+        """
+        c: context_idx [batch, 1]
+        state:[batch, 3, 7, 7]
+        """
+        if isinstance(self.descriptions,np.ndarray):
+            self.descriptions = torch.from_numpy(self.descriptions)
 
         if self._use_cuda:
-            c = c.cuda()
+            self.descriptions = self.descriptions.cuda()
 
-        c_onehot = F.one_hot(c, num_classes = self._n_contexts)
-
+        # c_onehot = F.one_hot(c, num_classes = self._n_contexts)
+        task_embedding = torch.tensor(self.descriptions[c])   # [batch, context_len]
+        
         # task-weight and task-embeddings
-        w = self._task_encoder(c_onehot.float()).unsqueeze(1)
+        w = self._task_encoder(task_embedding.float()).unsqueeze(1)             # [batch, 1, n_experts]
 
         # image embeddings
-        features_cnn = self.cnn(state.float())
-        features_cnn = torch.permute(features_cnn, (1,0,2))
+        features_cnn = self.cnn(state.float())                          # [n_experts, batch, n_features]    
+        features_cnn = torch.permute(features_cnn, (1,0,2))            # [batch, n_experts, n_features]
 
         # task-image embeddings
-        features_cnn = w@features_cnn
-        features_cnn = features_cnn.squeeze(1)
+        features_cnn = w@features_cnn                                # [batch, 1, n_features]
+        features_cnn = features_cnn.squeeze(1)                     # [batch, n_features]
 
         # only activation after weighting the features 
-        features_cnn = torch.tanh(features_cnn)
+        features_cnn = torch.tanh(features_cnn)                     # [batch, n_features]
 
-        f = torch.zeros(size=(state.shape[0], self._n_output))
+        # [batch, context_len + n_features]--->[batch, 4]
+        action_weights = self.action_router(torch.cat((task_embedding, features_cnn), dim=1))       # [batch, 4]
+        f = torch.zeros(size=(state.shape[0], self._n_output*self.num_action_experts))
         
         if self._use_cuda:
             f = f.cuda()
+        
+        for i in range(self.num_action_experts):
+            # 通过每个 expert head 处理特征
+            expert_out = self._output_heads[i](features_cnn)  # [batch, self._n_output]
+            
+            # 存储每个 expert 的输出
+            f[:, i * self._n_output : (i + 1) * self._n_output] = expert_out
 
-        for ci in torch.unique(c):
-            ci_idx = torch.argwhere(c == ci).ravel()
-            fi = self._output_heads[ci](features_cnn[ci_idx, :])
-            f[ci_idx] = fi
-
-        return f
+        # MoE: 根据 action_weights 进行专家加权
+        action_weights = torch.softmax(action_weights, dim=1)  # [batch, 4]
+        
+        # 计算最终动作决策
+        f = f.view(state.shape[0], self.num_action_experts, self._n_output)  # [batch, num_experts, n_output]
+        f = torch.einsum("bk, bkn -> bn", action_weights, f)  # [batch, n_output]
+        
+        return f, action_weights
     
     def compute_features(self, state):
         feat = self.cnn(state.float()).detach()

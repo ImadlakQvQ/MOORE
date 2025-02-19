@@ -2,7 +2,7 @@ from tqdm import tqdm
 
 from collections import defaultdict
 
-class Core(object):
+class MEMTCore(object):
     def __init__(self, agent, mdp, callbacks_fit=None, callback_step=None):
         self.agent = agent
         self.mdp = mdp

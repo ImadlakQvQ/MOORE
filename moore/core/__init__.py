@@ -1,4 +1,4 @@
 from .core import Core
 from .vec_core import VecCore
-
-__all__ = ['Core','VecCore']
+from .core_memt import MEMTCore
+__all__ = ['Core','VecCore', 'MEMTCore']

@@ -3,7 +3,7 @@
 #SBATCH --cpus-per-task=6
 #SBATCH --mem=80gb
 #SBATCH --output=log_cc/%j.out
-#SBATCH --time=0-00:20
+#SBATCH --time=0-10:00
 
 module load StdEnv/2020 cmake gcc opencv python/3.8.10
 source ~/.venv/moore_minigrid/bin/activate
