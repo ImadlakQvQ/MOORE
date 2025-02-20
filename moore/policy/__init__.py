@@ -1,3 +1,3 @@
-from .torch_policy import MTBoltzmannTorchPolicy
+from .torch_policy import MTBoltzmannTorchPolicy, MEMTBoltzmannTorchPolicy
 
-__all__ = ['MTBoltzmannTorchPolicy']
+__all__ = ['MTBoltzmannTorchPolicy', 'MEMTBoltzmannTorchPolicy']

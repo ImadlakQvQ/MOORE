@@ -8,8 +8,8 @@ import torch.optim as optim
 import torch.nn.functional as F
 from moore.core import MEMTCore
 from moore.algorithms.actor_critic import MEMTPPO
-from moore.policy import MTBoltzmannTorchPolicy
-from moore.environments import MiniGrid
+from moore.policy import MEMTBoltzmannTorchPolicy
+from moore.environments import MEMTMiniGrid as MiniGrid
 from moore.utils.argparser import argparser
 from moore.utils.dataset import get_stats
 import moore.utils.networks_ppo as Network
@@ -23,27 +23,29 @@ from joblib import delayed, Parallel
 import numpy as np
 
 # TODO 将这些描述转换到一个统一的任务空间
+task_space = np.random.randn(7, 128)
+task_space[0]
 MT_EXP = {
     "MT7": {
-        "MiniGrid-DoorKey-6x6-v0": "A small grid-world environment where the agent must pick up a key and open a door to reach the goal.",
-        "MiniGrid-DistShift1-v0": "A distributional shift environment where the agent must generalize to slightly different layouts.",
-        "MiniGrid-RedBlueDoors-6x6-v0": "An environment where the agent must open a door of a specific color to reach the goal.",
-        "MiniGrid-LavaGapS7-v0": "An environment with a gap of lava that the agent must cross using precise movement.",
-        "MiniGrid-MemoryS11-v0": "A memory-based environment where the agent must recall the location of the goal after an initial observation phase.",
-        "MiniGrid-SimpleCrossingS9N2-v0": "A navigation task where the agent must find a path through walls blocking the way.",
-        "MiniGrid-MultiRoom-N2-S4-v0": "An environment with multiple rooms connected by doors, where the agent must explore to find the goal."
+        "MiniGrid-DoorKey-6x6-v0": task_space[0],
+        "MiniGrid-DistShift1-v0": task_space[1],
+        "MiniGrid-RedBlueDoors-6x6-v0": task_space[2],
+        "MiniGrid-LavaGapS7-v0": task_space[3],
+        "MiniGrid-MemoryS11-v0": task_space[4],
+        "MiniGrid-SimpleCrossingS9N2-v0": task_space[5],
+        "MiniGrid-MultiRoom-N2-S4-v0": task_space[6]
     },
     "MT3": {
-        "MiniGrid-LavaGapS7-v0": "An environment with a gap of lava that the agent must cross using precise movement.",
-        "MiniGrid-RedBlueDoors-6x6-v0": "An environment where the agent must open a door of a specific color to reach the goal.",
-        "MiniGrid-MemoryS11-v0": "A memory-based environment where the agent must recall the location of the goal after an initial observation phase."
+        "MiniGrid-LavaGapS7-v0": task_space[3],
+        "MiniGrid-RedBlueDoors-6x6-v0": task_space[2],
+        "MiniGrid-MemoryS11-v0": task_space[4]
     },
     "MT5": {
-        "MiniGrid-DoorKey-6x6-v0": "A small grid-world environment where the agent must pick up a key and open a door to reach the goal.",
-        "MiniGrid-LavaGapS7-v0": "An environment with a gap of lava that the agent must cross using precise movement.",
-        "MiniGrid-RedBlueDoors-6x6-v0": "An environment where the agent must open a door of a specific color to reach the goal.",
-        "MiniGrid-DistShift1-v0": "A distributional shift environment where the agent must generalize to slightly different layouts.",
-        "MiniGrid-MemoryS11-v0": "A memory-based environment where the agent must recall the location of the goal after an initial observation phase."
+        "MiniGrid-DoorKey-6x6-v0": task_space[0],
+        "MiniGrid-LavaGapS7-v0": task_space[3],
+        "MiniGrid-RedBlueDoors-6x6-v0": task_space[2],
+        "MiniGrid-DistShift1-v0": task_space[1],
+        "MiniGrid-MemoryS11-v0": task_space[4]
     }
 }
 
@@ -73,13 +75,13 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
     # MT#中有几个 list中就有几个
     env_list = []
     descriptions = []
-    for env_name_i, description_i in env_names:
+    for env_name_i, description_i in env_names.items():
         env_list.append(MiniGrid(env_name_i, horizon = horizon, gamma=gamma, render_mode=args.render_mode, description=description_i))
         descriptions.append(description_i)
 
     # 设置任务空间维度
     n_contexts = len(env_list)
-
+    descriptions = np.array(descriptions)
     batch_size = args.batch_size
     train_frequency = args.train_frequency
 
@@ -99,7 +101,7 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
                         descriptions=descriptions
                         )
     # 是在同一个环境中执行不同的任务，所以观测空间与动作空间相同
-    policy = MTBoltzmannTorchPolicy(
+    policy = MEMTBoltzmannTorchPolicy(
             actor_network,
             env_list[0].info.observation_space.shape,
             (env_list[0].info.action_space.n,),
@@ -125,7 +127,8 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
                         learning_rate = lr_critic,
                         n_experts=args.n_experts,
                         input_shape = env_list[0].info.observation_space.shape,
-                        output_shape=(1,)
+                        output_shape=(1,),
+                        descriptions=descriptions
                         )
     
     # alg
@@ -152,7 +155,7 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
         args.wandb = False
 
     if args.wandb:
-        wandb.init(name = "seed_"+str(exp_id if seed is None else seed), project = "MOORE", group = f"minigrid_{args.env_name}", mode="offline", job_type=args.exp_name, config=vars(args))
+        wandb.init(name = "seed_"+str(exp_id if seed is None else seed), project = "MEMT", group = f"minigrid_{args.env_name}", mode="offline", job_type=args.exp_name, config=vars(args))
 
     # Agent
     agent = MEMTPPO(env_list[0].info, policy, n_contexts=n_contexts, **alg_params)
