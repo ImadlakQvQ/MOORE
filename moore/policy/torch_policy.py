@@ -256,3 +256,104 @@ class MTBoltzmannTorchPolicy(TorchPolicy):
 
     def set_beta(self, beta):
         self._beta = to_parameter(beta)
+
+
+
+class MEMTBoltzmannTorchPolicy(TorchPolicy):
+    """
+    Torch policy implementing a Multi-Task Boltzmann policy.
+
+    """
+    class CategoricalWrapper(torch.distributions.Categorical):
+        def __init__(self, logits):
+            super().__init__(logits=logits)
+
+        def log_prob(self, value):
+            return super().log_prob(value.squeeze())
+
+    def __init__(self, network, input_shape, output_shape, beta, use_cuda=False, **params):
+        """
+        Constructor.
+
+        Args:
+            network (object): the network class used to implement the mean
+                regressor;
+            input_shape (tuple): the shape of the state space;
+            output_shape (tuple): the shape of the action space;
+            beta ((float, Parameter)): the inverse of the temperature distribution. As
+                the temperature approaches infinity, the policy becomes more and
+                more random. As the temperature approaches 0.0, the policy becomes
+                more and more greedy.
+            params (dict): parameters used by the network constructor.
+
+        """
+        super().__init__(use_cuda)
+
+        self._action_dim = output_shape[0]
+        self._predict_params = dict()
+
+        self._logits = Regressor(TorchApproximator, input_shape, output_shape,
+                                 network=network, use_cuda=use_cuda, **params)
+        self._beta = to_parameter(beta)
+
+        self._add_save_attr(
+            _action_dim='primitive',
+            _predict_params='pickle',
+            _beta='mushroom',
+            _logits='mushroom',
+        )
+
+    def draw_action_t(self, state):
+        # state should be a list
+        (distribution, action_weights) = self.distribution_t(state)
+        action = distribution.sample().detach()
+        if len(action.shape) > 1:
+            return action, action_weights
+        else:
+            return action.unsqueeze(0), action_weights
+
+    def log_prob_t(self, state, action):
+        # state should be a list
+        return self.distribution_t(state)[0].log_prob(action)[:, None]
+
+    def entropy_t(self, state):
+        (dist, action_weights) = self.distribution_t(state)
+        entropy = torch.mean(dist.entropy())
+        experts_entropy = torch.mean(torch.var(action_weights, dim=1))
+        return entropy, experts_entropy
+    
+    def router_loss(self, state, action):
+        # state should be a list
+        (distribution, action_weights) = self.distribution_t(state)
+        return torch.mean(action_weights * distribution.log_prob(action))
+
+    def distribution_t(self, state):
+        # 根据state返回一个分布
+        c, state = state[0], state[1]
+        f = self._logits(state, c=c, **self._predict_params, output_tensor=True)
+        f = f.reshape(-1, f.shape[-1])
+        logits = f[:, :self._action_dim]
+        action_weights = f[:, self._action_dim:]
+        logits = logits * self._beta(state.cpu().numpy()) # add .cpu()
+        return MTBoltzmannTorchPolicy.CategoricalWrapper(logits), action_weights
+
+    def set_weights(self, weights):
+        self._logits.set_weights(weights)
+
+    def get_weights(self):
+        return self._logits.get_weights()
+
+    def parameters(self):
+        return self._logits.model.network.parameters()
+
+    def set_beta(self, beta):
+        self._beta = to_parameter(beta)
+
+    def draw_action(self, state):
+        # handling context
+        with torch.no_grad():
+            c, state = state[0], state[1]
+            s = to_float_tensor(np.atleast_2d(state), self._use_cuda)
+            (a, w) = self.draw_action_t([c, s])
+
+        return torch.squeeze(a, dim=0).detach().cpu().numpy(), w.detach().cpu().numpy()

@@ -434,6 +434,7 @@ class MiniGridPPOMEMTNetwork(nn.Module):
         self._use_cuda = use_cuda
         self.descriptions = descriptions
         self.context_len = len(descriptions[0])
+        self.descriptions = torch.tensor(self.descriptions)
         self.num_action_experts = 4
         n_input_channels = self._n_input[-1]
 
@@ -486,17 +487,16 @@ class MiniGridPPOMEMTNetwork(nn.Module):
         c: context_idx [batch, 1]
         state:[batch, 3, 7, 7]
         """
-        if isinstance(self.descriptions,np.ndarray):
-            self.descriptions = torch.from_numpy(self.descriptions)
-
+        if isinstance(c, np.ndarray):
+            c = torch.tensor(c, dtype=torch.long)
         if self._use_cuda:
             self.descriptions = self.descriptions.cuda()
-
+            c = c.cuda()
         # c_onehot = F.one_hot(c, num_classes = self._n_contexts)
-        task_embedding = torch.tensor(self.descriptions[c])   # [batch, context_len]
+        task_embedding = self.descriptions[c]   # [batch, context_len]
         
         # task-weight and task-embeddings
-        w = self._task_encoder(task_embedding.float()).unsqueeze(1)             # [batch, 1, n_experts]
+        w = self._task_encoder(task_embedding.float()).unsqueeze(-2)             # [batch, 1, n_experts]
 
         # image embeddings
         features_cnn = self.cnn(state.float())                          # [n_experts, batch, n_features]    
@@ -510,7 +510,9 @@ class MiniGridPPOMEMTNetwork(nn.Module):
         features_cnn = torch.tanh(features_cnn)                     # [batch, n_features]
 
         # [batch, context_len + n_features]--->[batch, 4]
-        action_weights = self.action_router(torch.cat((task_embedding, features_cnn), dim=1))       # [batch, 4]
+
+        action_weights = self.action_router(torch.cat((task_embedding.reshape(features_cnn.shape[0],-1).to(features_cnn.dtype), features_cnn), dim=1))
+        action_weights = torch.softmax(action_weights, dim=1)
         f = torch.zeros(size=(state.shape[0], self._n_output*self.num_action_experts))
         
         if self._use_cuda:
@@ -524,13 +526,13 @@ class MiniGridPPOMEMTNetwork(nn.Module):
             f[:, i * self._n_output : (i + 1) * self._n_output] = expert_out
 
         # MoE: 根据 action_weights 进行专家加权
-        action_weights = torch.softmax(action_weights, dim=1)  # [batch, 4]
         
         # 计算最终动作决策
         f = f.view(state.shape[0], self.num_action_experts, self._n_output)  # [batch, num_experts, n_output]
         f = torch.einsum("bk, bkn -> bn", action_weights, f)  # [batch, n_output]
-        
-        return f, action_weights
+        f = torch.concat((f, action_weights), dim=1).reshape(-1, self._n_output + self.num_action_experts)
+
+        return f
     
     def compute_features(self, state):
         feat = self.cnn(state.float()).detach()

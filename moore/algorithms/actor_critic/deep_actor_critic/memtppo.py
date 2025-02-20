@@ -142,7 +142,7 @@ class MEMTPPO(Agent):
             np_adv_i = (np_adv[ci] - np.mean(np_adv[ci])) / (np.std(np_adv[ci]) + 1e-8)
             adv[ci] = to_float_tensor(np_adv_i, self.policy.use_cuda)
                 
-        old_pol_dist = self.policy.distribution_t([c, obs])
+        old_pol_dist, action = self.policy.distribution_t([c, obs])
         old_log_p = old_pol_dist.log_prob(act)[:, None].detach()
         self._V.fit(x, v_target, c = c, **self._critic_fit_params)
         self._update_policy(c, obs, act, adv, old_log_p)
@@ -152,6 +152,7 @@ class MEMTPPO(Agent):
         self._iter += 1
 
     def _update_policy(self, c, obs, act, adv, old_log_p):
+        # TODO loss function
         for epoch in range(self._n_epochs_policy()):
             for c_i, obs_i, act_i, adv_i, old_log_p_i in minibatch_generator(
                     self._batch_size(), c, obs, act, adv, old_log_p):
@@ -167,8 +168,10 @@ class MEMTPPO(Agent):
 
                 loss = -torch.mean(torch.min(prob_ratio * adv_i,
                                              clipped_ratio * adv_i))
+                entropy, experts_loss = self.policy.entropy_t([c_i, obs_i])
+                loss -= self._ent_coeff()*entropy
+                loss += experts_loss
 
-                loss -= self._ent_coeff()*self.policy.entropy_t([c_i, obs_i])
 
                 loss.backward()
                 self._optimizer.step()

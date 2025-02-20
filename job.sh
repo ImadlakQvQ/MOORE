@@ -1,13 +1,13 @@
 #! /bin/bash
 #SBATCH --account=def-bboulet
+#SBATCH --gres=gpu:a100_1g.5gb:1
 #SBATCH --cpus-per-task=6
 #SBATCH --mem=80gb
-#SBATCH --output=log_cc/%j.out
+#SBATCH --output=cc_log/%j.out
 #SBATCH --time=0-10:00
 
-module load StdEnv/2020 cmake gcc opencv python/3.8.10
+module load StdEnv/2020 cmake gcc opencv rust python/3.8.10
 source ~/.venv/moore_minigrid/bin/activate
-
 cd project/def-bboulet/imadlak/program/MOORE
 
 export WANDB_MODE='offline'

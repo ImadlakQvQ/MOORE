@@ -27,20 +27,20 @@ def argparser():
      arg_alg = parser.add_argument_group('Algorithm')
      arg_alg.add_argument("--activation", choices=['ReLU', 'Sigmoid', 'Tanh', 'Linear'], default='ReLU')
      arg_alg.add_argument("--n_head_features", type=int, nargs='+', default=[])
-     arg_alg.add_argument("--train_frequency", type=int, default=1)
+     arg_alg.add_argument("--train_frequency", type=int, default=2000)
      arg_alg.add_argument("--batch_size", type=int, default=128,
                           help='Batch size for each fit of the network.')
-     arg_alg.add_argument("--n_epochs", type=int, default=200,
+     arg_alg.add_argument("--n_epochs", type=int, default=100,
                           help='Number of epochs.')
      arg_alg.add_argument("--start_epoch", type=int, default=0,
                           help='Start epoch.')
-     arg_alg.add_argument("--n_steps", type=int,
+     arg_alg.add_argument("--n_steps", type=int, default=2000,
                           help='Number of learning steps per epoch.')
      arg_alg.add_argument("--n_episodes", type=int,
                           help='Number of learning episodes per epoch.')
      arg_alg.add_argument("--n_steps_test", type=int,
                           help='Number of learning steps per epoch.')
-     arg_alg.add_argument("--n_episodes_test", type=int,
+     arg_alg.add_argument("--n_episodes_test", type=int, default=16,
                           help='Number of episodes (rollouts) for evaluation per epoch.')
      arg_alg.add_argument("--load_critic", type=str, default=None,
                           help='Directory of the weights for critic')
@@ -100,9 +100,9 @@ def argparser():
                             help='Add timestamp to the results folder.')#
      arg_utils.add_argument('--results_dir', type=str, default='logs/',
                             help='Results directory name.')#
-     arg_utils.add_argument('--exp_name', type=str, default='',
+     arg_utils.add_argument('--exp_name', type=str, default='debug',
                             help='Name of the experiment.')#
-     arg_utils.add_argument("--n_exp", type=int)
+     arg_utils.add_argument("--n_exp", type=int, default=1)
      arg_utils.add_argument('--seed', type=int, nargs = '+', 
                             help='Seed to be used.')#
 

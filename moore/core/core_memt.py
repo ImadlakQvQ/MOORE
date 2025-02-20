@@ -233,7 +233,9 @@ class MEMTCore(object):
         return dataset, dataset_info
 
     def _step(self, i, render):
-        action = self.agent.draw_action([i, self._state[i]])
+        output = self.agent.draw_action([i, self._state[i]])
+        action = output[0]
+        action_weight = output[1]
         next_state, reward, absorbing, step_info = self.mdp[i].step(action)
 
         self._episode_steps[i] += 1
