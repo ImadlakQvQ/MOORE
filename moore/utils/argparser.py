@@ -96,6 +96,7 @@ def argparser():
      arg_utils.add_argument('--wandb', action='store_true',
                             help='log results to wandb')#
      arg_alg.add_argument("--wandb_entity", type=str, help="Name of the entity of Wandb.")
+     arg_alg.add_argument("--name", type=str, default="MOORE", help="Name of the entity of Wandb.")
      arg_utils.add_argument('--use_timestamp', action='store_true',
                             help='Add timestamp to the results folder.')#
      arg_utils.add_argument('--results_dir', type=str, default='logs/',
