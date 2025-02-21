@@ -317,6 +317,7 @@ class MEMTBoltzmannTorchPolicy(TorchPolicy):
         return self.distribution_t(state)[0].log_prob(action)[:, None]
 
     def entropy_t(self, state):
+        # TODO 设计loss
         (dist, action_weights) = self.distribution_t(state)
         entropy = torch.mean(dist.entropy())
         experts_entropy = torch.mean(torch.var(action_weights, dim=1))

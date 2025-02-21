@@ -99,7 +99,7 @@ class MEMTPPO(Agent):
         self._eps_ppo = to_parameter(eps_ppo)
 
         self._optimizer = actor_optimizer['class'](policy.parameters(), **actor_optimizer['params'])
-
+        self.router_optimizer = torch.optim.Adam(params=policy.parameters())
         self._lambda = to_parameter(lam)
         self._ent_coeff = to_parameter(ent_coeff)
 

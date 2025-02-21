@@ -59,7 +59,7 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
 
     np.random.seed()
 
-    single_logger = Logger(f"seed_{exp_id if seed is None else seed}", results_dir=save_dir, log_console=True)
+    single_logger = Logger(f"MEMT_{exp_id if seed is None else seed}", results_dir=save_dir, log_console=True)
     save_dir = single_logger.path
 
     n_epochs = args.n_epochs
@@ -266,7 +266,7 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
             wandb.log({"all_minigrid/AverageReturn": current_all_average_return/ n_contexts, 
                        "all_minigrid/AverageDiscountedReturn": current_all_average_discounted_return/ n_contexts}, step = n+1, commit=True)
 
-    # ---------------------------------------- 训练结束 ----------------------------------------
+    # ---------------------------------------- 保存参数  ----------------------------------------
     if args.wandb:
         wandb.finish()
 
