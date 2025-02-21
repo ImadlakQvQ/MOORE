@@ -10,7 +10,7 @@ from moore.algorithms.actor_critic import MTSAC
 from moore.environments.metaworld_env import make_env
 from moore.environments import SubprocVecEnv
 from moore.utils.dataset import get_stats
-from moore.utils.argparser import argparser
+from moore.utils.argparser_sac import argparser
 import moore.utils.networks_sac as Network
 # data handling
 import numpy as np

@@ -23,7 +23,7 @@ from joblib import delayed, Parallel
 import numpy as np
 
 # TODO 将这些描述转换到一个统一的任务空间
-task_space = np.load("task_embeddings.npy", allow_pickle=True)
+task_space = np.load("task_embeddings_minigrid.npy", allow_pickle=True)
 
 MT_EXP = {
     "MT7": {
