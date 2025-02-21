@@ -86,7 +86,7 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
     train_frequency = args.train_frequency
 
     # TODO: actor 
-    actor_network = getattr(Network, "MiniGridPPOMEMTNetwork")
+    actor_network = getattr(Network, args.actor_network)
     actor_n_features = args.actor_n_features#
     lr_actor = args.lr_actor 
     beta=1.
@@ -111,7 +111,7 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
                         'params': {'lr': lr_actor, 'betas': (0.9, 0.999)}}#
     
     # TODO critic
-    critic_network = getattr(Network, "MiniGridPPOMEMTNetwork")
+    critic_network = getattr(Network, args.critic_network)
     critic_n_features = args.critic_n_features#
     lr_critic = args.lr_critic #
     critic_fit_params = None
