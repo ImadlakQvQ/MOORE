@@ -23,8 +23,8 @@ from joblib import delayed, Parallel
 import numpy as np
 
 # TODO 将这些描述转换到一个统一的任务空间
-task_space = np.random.randn(7, 128)
-task_space[0]
+task_space = np.load("task_embeddings.npy", allow_pickle=True)
+
 MT_EXP = {
     "MT7": {
         "MiniGrid-DoorKey-6x6-v0": task_space[0],
@@ -36,15 +36,15 @@ MT_EXP = {
         "MiniGrid-MultiRoom-N2-S4-v0": task_space[6]
     },
     "MT3": {
-        "MiniGrid-LavaGapS7-v0": task_space[3],
         "MiniGrid-RedBlueDoors-6x6-v0": task_space[2],
+        "MiniGrid-LavaGapS7-v0": task_space[3],
         "MiniGrid-MemoryS11-v0": task_space[4]
     },
     "MT5": {
         "MiniGrid-DoorKey-6x6-v0": task_space[0],
-        "MiniGrid-LavaGapS7-v0": task_space[3],
-        "MiniGrid-RedBlueDoors-6x6-v0": task_space[2],
         "MiniGrid-DistShift1-v0": task_space[1],
+        "MiniGrid-RedBlueDoors-6x6-v0": task_space[2],
+        "MiniGrid-LavaGapS7-v0": task_space[3],
         "MiniGrid-MemoryS11-v0": task_space[4]
     }
 }
