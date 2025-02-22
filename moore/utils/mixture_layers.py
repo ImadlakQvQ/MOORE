@@ -156,3 +156,44 @@ class OrthogonalLayer1D(nn.Module):
 
         basis = torch.transpose(basis,0,1)
         return basis
+
+
+class OrthogonalLayerMEMT(nn.Module):
+
+    """
+        OrthogonalLayer1D make the outputs of each unit of the previous sub-layer orthogonal to each other.
+        Orthogonalization is performed using Gram-Schmidt orthogonalization.
+    """
+
+    def __init__(self):
+        super(OrthogonalLayerMEMT, self).__init__()
+
+    def forward(self,x):
+
+        """
+        Arg:
+            x: The parallel formated input with shape: [n_models,n_samples,dim]
+
+        return:
+            basis: Orthogonalized version of the input (x). The shape of basis is [n_models,n_samples,dim].
+                   For each sample, the outputs of all of the models (n_models) will be orthogonal
+                   to each other.
+        """
+        epsilon = 1e-8  # 避免除零的小常数
+
+        x1 = torch.transpose(x, 0, 1)
+        # 使用 keepdim=True 简化维度扩展操作
+        norm_first = torch.linalg.norm(x1[:, 0, :], dim=1, keepdim=True)
+        basis = torch.unsqueeze(x1[:, 0, :] / (norm_first + epsilon), 1)
+
+        for i in range(1, x1.shape[1]):
+            v = x1[:, i, :]
+            v = torch.unsqueeze(v, 1)
+            projection = torch.matmul(torch.matmul(v, torch.transpose(basis, 2, 1)), basis)
+            w = v - projection
+            w_norm = torch.linalg.norm(w, dim=2, keepdim=True)
+            wnorm = w / (w_norm + epsilon)
+            basis = torch.cat([basis, wnorm], axis=1)
+
+        basis = torch.transpose(basis, 0, 1)
+        return basis

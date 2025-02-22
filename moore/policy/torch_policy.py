@@ -311,17 +311,17 @@ class MEMTBoltzmannTorchPolicy(TorchPolicy):
             return action, action_weights
         else:
             return action.unsqueeze(0), action_weights
-
+    # TODO 从这个函数获得loss之后，再反向传播获取梯度
     def log_prob_t(self, state, action):
         # state should be a list
         return self.distribution_t(state)[0].log_prob(action)[:, None]
-
+    # 这个也是获得相应的loss
     def entropy_t(self, state):
         # 状态采样获得动作分布与router权重
         (dist, action_weights) = self.distribution_t(state)
         entropy = torch.mean(dist.entropy())            # SAC中的entropy
         # TODO 这里待定哈
-        experts_entropy = torch.mean(torch.var(action_weights, dim=1))*1000
+        experts_entropy = torch.mean(torch.var(action_weights, dim=1))*500
         return entropy, experts_entropy
     
     def router_loss(self, state, action):
