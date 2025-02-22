@@ -317,10 +317,11 @@ class MEMTBoltzmannTorchPolicy(TorchPolicy):
         return self.distribution_t(state)[0].log_prob(action)[:, None]
 
     def entropy_t(self, state):
-        # TODO 设计loss
+        # 状态采样获得动作分布与router权重
         (dist, action_weights) = self.distribution_t(state)
-        entropy = torch.mean(dist.entropy())
-        experts_entropy = torch.mean(torch.var(action_weights, dim=1))
+        entropy = torch.mean(dist.entropy())            # SAC中的entropy
+        # TODO 这里待定哈
+        experts_entropy = torch.mean(torch.var(action_weights, dim=1))*1000
         return entropy, experts_entropy
     
     def router_loss(self, state, action):
@@ -345,8 +346,12 @@ class MEMTBoltzmannTorchPolicy(TorchPolicy):
         return self._logits.get_weights()
 
     def parameters(self):
+        # TODO 这里要看看怎么返回router参数
         return self._logits.model.network.parameters()
-
+    
+    def router_parameters(self):
+        return self._logits.model.network.action_router.parameters()
+    
     def set_beta(self, beta):
         self._beta = to_parameter(beta)
 

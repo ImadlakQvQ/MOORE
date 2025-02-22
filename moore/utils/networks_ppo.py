@@ -481,6 +481,7 @@ class MiniGridPPOMEMTNetwork(nn.Module):
             head.append(nn.Linear(input_size, self._n_output))
 
             self._output_heads.append(head)
+        self.action_transformer = mixture_layers.OrthogonalLayer1D()
 
     def forward(self, state, c = None):
         """
@@ -529,6 +530,7 @@ class MiniGridPPOMEMTNetwork(nn.Module):
         
         # 计算最终动作决策
         f = f.view(state.shape[0], self.num_action_experts, self._n_output)  # [batch, num_experts, n_output]
+        f = self.action_transformer(f)  # [batch, num_experts, n_output]
         f = torch.einsum("bk, bkn -> bn", action_weights, f)  # [batch, n_output]
         f = torch.concat((f, action_weights), dim=1).reshape(-1, self._n_output + self.num_action_experts)
 

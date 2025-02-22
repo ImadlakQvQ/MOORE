@@ -57,7 +57,7 @@ def argparser():
      arg_alg.add_argument("--actor_n_features", type=int, nargs='+', default=[])
      arg_alg.add_argument("--actor_mu_n_features", type=int, nargs='+', default=[])
      arg_alg.add_argument("--actor_sigma_n_features", type=int, nargs='+', default=[])
-     arg_alg.add_argument("--critic_network", type=str, default="MiniGridPPOMEMTNetwork")
+     arg_alg.add_argument("--critic_network", type=str, default="MiniGridPPOMixtureMHNetwork")
      arg_alg.add_argument("--critic_n_features", type=int, nargs='+', default=[])
      arg_alg.add_argument("--lr_actor", type=float, default=3e-4)
      arg_alg.add_argument("--lr_critic", type=float, default=3e-4)

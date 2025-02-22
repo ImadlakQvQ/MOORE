@@ -98,8 +98,8 @@ class MEMTPPO(Agent):
         self._batch_size = to_parameter(batch_size)
         self._eps_ppo = to_parameter(eps_ppo)
 
-        self._optimizer = actor_optimizer['class'](policy.parameters(), **actor_optimizer['params'])
-        self.router_optimizer = torch.optim.Adam(params=policy.parameters())
+        self.policy_optimizer = actor_optimizer['class'](policy.parameters(), **actor_optimizer['params'])
+        self.router_optimizer = torch.optim.Adam(params=policy.router_parameters(), lr=1e-3, betas=(0.9, 0.999))
         self._lambda = to_parameter(lam)
         self._ent_coeff = to_parameter(ent_coeff)
 
@@ -142,22 +142,23 @@ class MEMTPPO(Agent):
             np_adv_i = (np_adv[ci] - np.mean(np_adv[ci])) / (np.std(np_adv[ci]) + 1e-8)
             adv[ci] = to_float_tensor(np_adv_i, self.policy.use_cuda)
                 
-        old_pol_dist, action = self.policy.distribution_t([c, obs])
+        old_pol_dist, _ = self.policy.distribution_t([c, obs])
         old_log_p = old_pol_dist.log_prob(act)[:, None].detach()
         self._V.fit(x, v_target, c = c, **self._critic_fit_params)
         self._update_policy(c, obs, act, adv, old_log_p)
+
 
         # Print fit information
         self._log_info(dataset, c, x, v_target, old_pol_dist)
         self._iter += 1
 
     def _update_policy(self, c, obs, act, adv, old_log_p):
-        # TODO loss function
+        # TODO loss function 然后训练router
         for epoch in range(self._n_epochs_policy()):
             for c_i, obs_i, act_i, adv_i, old_log_p_i in minibatch_generator(
                     self._batch_size(), c, obs, act, adv, old_log_p):
 
-                self._optimizer.zero_grad()
+                self.policy_optimizer.zero_grad()
                 prob_ratio = torch.exp(
                     self.policy.log_prob_t([c_i, obs_i], act_i) - old_log_p_i
                 )
@@ -174,7 +175,7 @@ class MEMTPPO(Agent):
 
 
                 loss.backward()
-                self._optimizer.step()
+                self.policy_optimizer.step()
 
     def _log_info(self, dataset, c, x, v_target, old_pol_dist):
         if self._logger:
@@ -197,6 +198,6 @@ class MEMTPPO(Agent):
             self._logger.weak_line()
 
     def _post_load(self):
-        if self._optimizer is not None:
-            update_optimizer_parameters(self._optimizer, list(self.policy.parameters()))
+        if self.policy_optimizer is not None:
+            update_optimizer_parameters(self.policy_optimizer, list(self.policy.parameters()))
     
