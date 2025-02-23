@@ -419,6 +419,7 @@ class MiniGridPPOMEMTNetwork(nn.Module):
                        n_features,
                        n_contexts = 1,
                        n_experts = 4,
+                       n_action_experts = 4,
                        orthogonal = True,
                        use_cuda = False,
                        task_encoder_bias = False,
@@ -435,7 +436,7 @@ class MiniGridPPOMEMTNetwork(nn.Module):
         self.descriptions = descriptions
         self.context_len = len(descriptions[0])
         self.descriptions = torch.tensor(self.descriptions)
-        self.num_action_experts = 4
+        self.n_action_experts = n_action_experts
         n_input_channels = self._n_input[-1]
 
         # task encoder
@@ -464,9 +465,9 @@ class MiniGridPPOMEMTNetwork(nn.Module):
     
         self._output_heads = nn.ModuleList([])
         # router 输入为:(任务embedding+state_embedding)
-        self.action_router = nn.Linear(self.context_len+n_flatten, 4)
+        self.action_router = nn.Linear(self.context_len+n_flatten, self.n_action_experts)
         # TODO 确定后续动作experts数量
-        for _ in range(self.num_action_experts):
+        for _ in range(self.n_action_experts):
 
             input_size = n_flatten
             

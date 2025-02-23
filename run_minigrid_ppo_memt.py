@@ -59,7 +59,7 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
 
     np.random.seed()
 
-    single_logger = Logger(f"MEMT_{exp_id if seed is None else seed}", results_dir=save_dir, log_console=True)
+    single_logger = Logger(f"exp_{exp_id if seed is None else seed}", results_dir=save_dir, log_console=True)
     save_dir = single_logger.path
 
     n_epochs = args.n_epochs
@@ -97,6 +97,7 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
                         orthogonal=args.orthogonal,
                         learning_rate = lr_actor,
                         n_experts=args.n_experts,
+                        n_action_experts=args.n_action_experts,
                         use_cuda=args.use_cuda,
                         descriptions=descriptions,
                         coeff_experts=args.coeff_experts
@@ -155,13 +156,13 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
         args.wandb = False
 
     if args.wandb:
-        wandb.init(name = f"MEMT_{args.coeff_experts}_{args.lr_actor}"+str(exp_id if seed is None else seed), project = args.name, group = f"minigrid_{args.env_name}", mode="offline", job_type=args.exp_name, config=vars(args))
+        wandb.init(name = f"{args.exp_name}_"+str(exp_id if seed is None else seed), project = args.name, group = f"minigrid_{args.env_name}", mode="offline", job_type=args.exp_name, config=vars(args))
 
     # Agent
     agent = MEMTPPO(env_list[0].info, policy, n_contexts=n_contexts, **alg_params)
 
-    # single_logger.info(agent._V.model.network)
-    # single_logger.info(agent.policy._logits.model.network)
+    single_logger.info(agent._V.model.network)
+    single_logger.info(agent.policy._logits.model.network)
 
     os.makedirs(save_dir, exist_ok=True)
 
@@ -270,7 +271,7 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
     if args.wandb:
         wandb.finish()
 
-    if "MEMT" in args.actor_network:
+    if args.save:
         os.makedirs(os.path.join(save_dir, "critic_model"), exist_ok=True)
         os.makedirs(os.path.join(save_dir, "actor_model"), exist_ok=True)
 
@@ -293,7 +294,8 @@ if __name__ == '__main__':
 
     # logging               args.env_name=MT3
     results_dir = os.path.join(args.results_dir, "minigrid", "MT", args.env_name)
-
+    # TODO 确定实验名字 
+    args.exp_name = f"{args.exp_name}_{args.lr_actor}_{args.coeff_experts}"
     logger = Logger(args.exp_name, results_dir=results_dir, log_console=True, use_timestamp=args.use_timestamp)
     logger.strong_line()
     logger.info('Experiment Algorithm: ' + MEMTPPO.__name__)

@@ -44,17 +44,18 @@ def argparser():
                           help='Directory of the weights for actor')
      arg_alg.add_argument("--load_agent", type=str, default=None,
                           help='Directory of the saved agent')
+     arg_alg.add_argument("--save", action='store_true',  help='save the trained agent network')
      arg_alg.add_argument('--dropout', action='store_true',
                             help='Use dropout in the network')#
      
      arg_alg.add_argument("--actor_network", type=str, default="MiniGridPPOMEMTNetwork")
      arg_alg.add_argument("--actor_mu_network", type=str, default="ActorNetwork")
      arg_alg.add_argument("--actor_sigma_network", type=str, default="ActorNetwork")
-     arg_alg.add_argument("--actor_n_features", type=int, nargs='+', default=[])
+     arg_alg.add_argument("--actor_n_features", type=int, nargs='+', default=[128])
      arg_alg.add_argument("--actor_mu_n_features", type=int, nargs='+', default=[])
      arg_alg.add_argument("--actor_sigma_n_features", type=int, nargs='+', default=[])
      arg_alg.add_argument("--critic_network", type=str, default="MiniGridPPOMixtureMHNetwork")
-     arg_alg.add_argument("--critic_n_features", type=int, nargs='+', default=128)
+     arg_alg.add_argument("--critic_n_features", type=int, nargs='+', default=[128])
      arg_alg.add_argument("--lr_actor", type=float, default=3e-4)
      arg_alg.add_argument("--lr_critic", type=float, default=3e-4)
      arg_alg.add_argument("--lr_alpha", type=float, default=2e-6)
@@ -66,6 +67,7 @@ def argparser():
      arg_me = parser.add_argument_group('MixtureExperts')
      arg_me.add_argument("--orthogonal", action="store_true")
      arg_me.add_argument("--n_experts", type=int, default=4)
+     arg_me.add_argument("--n_action_experts", type=int, default=4)
      arg_me.add_argument("--agg_activation", type=str, nargs='+', default=['ReLU', 'ReLU'])
 
      arg_utils = parser.add_argument_group('Utils')
