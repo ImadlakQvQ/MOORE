@@ -190,7 +190,7 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
         core.current_idx = c
         description = mdp_c.description
         
-        dataset = core.evaluae(n_episodes=n_episodes_test, render=args.render_eval, quiet=True)
+        dataset = core.evaluate(n_episodes=n_episodes_test, render=args.render_eval, quiet=True)
         min_J, max_J, mean_J, mean_discounted_J, _ = get_stats(dataset, gamma, gamma_eval)
         metrics[mdp_c.env_name]["MinReturn"].append(min_J)
         metrics[mdp_c.env_name]["MaxReturn"].append(max_J)
