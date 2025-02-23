@@ -287,7 +287,7 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
 if __name__ == '__main__':
     # arguments
     args = argparser()
-
+    print(args._get_args)
     if args.seed is not None:
         assert len(args.seed) == args.n_exp
 
