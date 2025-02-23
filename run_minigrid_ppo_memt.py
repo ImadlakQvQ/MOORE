@@ -155,13 +155,13 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
         args.wandb = False
 
     if args.wandb:
-        wandb.init(name = "MEMT_test2005_"+str(exp_id if seed is None else seed), project = args.name, group = f"minigrid_{args.env_name}", mode="offline", job_type=args.exp_name, config=vars(args))
+        wandb.init(name = f"MEMT_{args.coeff_experts}_{args.lr_actor}"+str(exp_id if seed is None else seed), project = args.name, group = f"minigrid_{args.env_name}", mode="offline", job_type=args.exp_name, config=vars(args))
 
     # Agent
     agent = MEMTPPO(env_list[0].info, policy, n_contexts=n_contexts, **alg_params)
 
-    single_logger.info(agent._V.model.network)
-    single_logger.info(agent.policy._logits.model.network)
+    # single_logger.info(agent._V.model.network)
+    # single_logger.info(agent.policy._logits.model.network)
 
     os.makedirs(save_dir, exist_ok=True)
 
@@ -189,7 +189,7 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
         core.current_idx = c
         description = mdp_c.description
         
-        dataset = core.evaluate(n_episodes=n_episodes_test, render=args.render_eval, quiet=True)
+        dataset = core.evaluae(n_episodes=n_episodes_test, render=args.render_eval, quiet=True)
         min_J, max_J, mean_J, mean_discounted_J, _ = get_stats(dataset, gamma, gamma_eval)
         metrics[mdp_c.env_name]["MinReturn"].append(min_J)
         metrics[mdp_c.env_name]["MaxReturn"].append(max_J)
@@ -199,12 +199,12 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
         current_all_average_return+=mean_J
         current_all_average_discounted_return+=mean_discounted_J
 
-        single_logger.epoch_info(0,
-                            EnvName = mdp_c.env_name,
-                            MinReturn=min_J,
-                            MaxReturn = max_J,
-                            AverageReturn = mean_J,
-                            AverageDiscountedReturn = mean_discounted_J,)
+        # single_logger.epoch_info(0,
+        #                     EnvName = mdp_c.env_name,
+        #                     MinReturn=min_J,
+        #                     MaxReturn = max_J,
+        #                     AverageReturn = mean_J,
+        #                     AverageDiscountedReturn = mean_discounted_J,)
         if args.wandb:
             wandb.log({f'{mdp_c.env_name}/MinReturn': min_J,
                         f'{mdp_c.env_name}/MaxReturn': max_J,
@@ -221,7 +221,7 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
     
     # ---------------------------------------- 主程序 -----------------------------------
     # 默认100个epoch
-    for n in trange(n_epochs):
+    for n in trange(n_epochs, desc=f"{mdp_c.env_name}"):
         core.eval = False
         # beta是一个scale factor，乘在actor的输出上，还不知道是用来干啥的
         agent.policy.set_beta(beta)
@@ -245,13 +245,13 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
             current_all_average_return+=mean_J
             current_all_average_discounted_return+=mean_discounted_J
 
-            single_logger.epoch_info(n+1,
-                                EnvName = mdp_c.env_name,
-                                MinReturn=min_J,
-                                MaxReturn = max_J,
-                                AverageReturn = mean_J,
-                                AverageDiscountedReturn = mean_discounted_J,
-                                )
+            # single_logger.epoch_info(n+1,
+            #                     EnvName = mdp_c.env_name,
+            #                     MinReturn=min_J,
+            #                     MaxReturn = max_J,
+            #                     AverageReturn = mean_J,
+            #                     AverageDiscountedReturn = mean_discounted_J,
+            #                     )
             if args.wandb:
                 wandb.log({ f'{mdp_c.env_name}/MinReturn': min_J,
                             f'{mdp_c.env_name}/MaxReturn': max_J,
@@ -270,7 +270,7 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
     if args.wandb:
         wandb.finish()
 
-    if "Mixture" in args.actor_network:
+    if "MEMT" in args.actor_network:
         os.makedirs(os.path.join(save_dir, "critic_model"), exist_ok=True)
         os.makedirs(os.path.join(save_dir, "actor_model"), exist_ok=True)
 
@@ -287,7 +287,7 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
 if __name__ == '__main__':
     # arguments
     args = argparser()
-    print(args._get_args)
+
     if args.seed is not None:
         assert len(args.seed) == args.n_exp
 
@@ -298,9 +298,9 @@ if __name__ == '__main__':
     logger.strong_line()
     logger.info('Experiment Algorithm: ' + MEMTPPO.__name__)
     logger.info('Experiment Environment: ' + args.env_name)
-    logger.info('Experiment Type: ' + "MT-Baseline")
+    logger.info('Experiment Type: ' + "MEMT_test")
     logger.info("Experiment Name: " + args.exp_name)
-
+    logger.info("Experiment parameters: " + str(vars(args)))
     save_dir = logger.path
 
     with open(os.path.join(save_dir, 'args.pkl'), 'wb') as f:
