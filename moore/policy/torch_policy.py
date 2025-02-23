@@ -295,7 +295,7 @@ class MEMTBoltzmannTorchPolicy(TorchPolicy):
         self._logits = Regressor(TorchApproximator, input_shape, output_shape,
                                  network=network, use_cuda=use_cuda, **params)
         self._beta = to_parameter(beta)
-
+        self.coeff_experts = params.get('coeff_experts', 200)
         self._add_save_attr(
             _action_dim='primitive',
             _predict_params='pickle',
@@ -321,7 +321,7 @@ class MEMTBoltzmannTorchPolicy(TorchPolicy):
         (dist, action_weights) = self.distribution_t(state)
         entropy = torch.mean(dist.entropy())            # SAC中的entropy
         # TODO 这里待定哈
-        experts_entropy = torch.mean(torch.var(action_weights, dim=1))*500
+        experts_entropy = torch.mean(torch.var(action_weights, dim=1)) * self.coeff_experts
         return entropy, experts_entropy
     
     def router_loss(self, state, action):

@@ -28,16 +28,12 @@ def argparser():
      arg_alg.add_argument("--activation", choices=['ReLU', 'Sigmoid', 'Tanh', 'Linear'], default='ReLU')
      arg_alg.add_argument("--n_head_features", type=int, nargs='+', default=[])
      arg_alg.add_argument("--train_frequency", type=int, default=2000)
-     arg_alg.add_argument("--batch_size", type=int, default=128,
+     arg_alg.add_argument("--batch_size", type=int, default=256,
                           help='Batch size for each fit of the network.')
-     arg_alg.add_argument("--n_epochs", type=int, default=100,
-                          help='Number of epochs.')
-     arg_alg.add_argument("--start_epoch", type=int, default=0,
-                          help='Start epoch.')
-     arg_alg.add_argument("--n_steps", type=int, default=2000,
-                          help='Number of learning steps per epoch.')
-     arg_alg.add_argument("--n_episodes", type=int,
-                          help='Number of learning episodes per epoch.')
+     arg_alg.add_argument("--n_epochs", type=int, default=100, help='Number of epochs.')
+     arg_alg.add_argument("--start_epoch", type=int, default=0, help='Start epoch.')
+     arg_alg.add_argument("--n_steps", type=int, default=2000, help='Number of learning steps per epoch.')
+     arg_alg.add_argument("--n_episodes", type=int, help='Number of learning episodes per epoch.')
      arg_alg.add_argument("--n_steps_test", type=int,
                           help='Number of learning steps per epoch.')
      arg_alg.add_argument("--n_episodes_test", type=int, default=16,
@@ -58,7 +54,7 @@ def argparser():
      arg_alg.add_argument("--actor_mu_n_features", type=int, nargs='+', default=[])
      arg_alg.add_argument("--actor_sigma_n_features", type=int, nargs='+', default=[])
      arg_alg.add_argument("--critic_network", type=str, default="MiniGridPPOMixtureMHNetwork")
-     arg_alg.add_argument("--critic_n_features", type=int, nargs='+', default=[])
+     arg_alg.add_argument("--critic_n_features", type=int, nargs='+', default=128)
      arg_alg.add_argument("--lr_actor", type=float, default=3e-4)
      arg_alg.add_argument("--lr_critic", type=float, default=3e-4)
      arg_alg.add_argument("--lr_alpha", type=float, default=2e-6)
@@ -96,7 +92,7 @@ def argparser():
      arg_utils.add_argument('--wandb', action='store_true',
                             help='log results to wandb')#
      arg_alg.add_argument("--wandb_entity", type=str, help="Name of the entity of Wandb.")
-     arg_alg.add_argument("--name", type=str, default="MOORE", help="Name of the entity of Wandb.")
+     arg_alg.add_argument("--name", type=str, default="MEMT", help="Name of the entity of Wandb.")
      arg_utils.add_argument('--use_timestamp', action='store_true',
                             help='Add timestamp to the results folder.')#
      arg_utils.add_argument('--results_dir', type=str, default='logs/',
@@ -104,8 +100,8 @@ def argparser():
      arg_utils.add_argument('--exp_name', type=str, default='debug',
                             help='Name of the experiment.')#
      arg_utils.add_argument("--n_exp", type=int, default=1)
-     arg_utils.add_argument('--seed', type=int, nargs = '+', 
-                            help='Seed to be used.')#
+     arg_utils.add_argument('--seed', type=int, nargs = '+', help='Seed to be used.')
+     arg_utils.add_argument('--coeff_experts', type=float, default = 200, help='Coefficient of experts.')
 
      args = parser.parse_args()
 

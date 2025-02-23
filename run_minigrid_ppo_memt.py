@@ -51,8 +51,8 @@ MT_EXP = {
 
 def run_experiment(args, save_dir, exp_id = 0, seed = None):
     """
-    Run the experiment,
-    return the metrics
+        Run the experiment,
+        return the metrics
     """
     import matplotlib
     matplotlib.use('Agg') 
@@ -98,7 +98,8 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
                         learning_rate = lr_actor,
                         n_experts=args.n_experts,
                         use_cuda=args.use_cuda,
-                        descriptions=descriptions
+                        descriptions=descriptions,
+                        coeff_experts=args.coeff_experts
                         )
     # 是在同一个环境中执行不同的任务，所以观测空间与动作空间相同
     policy = MEMTBoltzmannTorchPolicy(
@@ -107,8 +108,7 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
             (env_list[0].info.action_space.n,),
             **actor_params)
     
-    actor_optimizer = {'class': optim.Adam,
-                        'params': {'lr': lr_actor, 'betas': (0.9, 0.999)}}#
+    actor_optimizer = {'class': optim.Adam, 'params': {'lr': lr_actor, 'betas': (0.9, 0.999)}}#
     
     # TODO critic
     critic_network = getattr(Network, args.critic_network)
@@ -155,7 +155,7 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
         args.wandb = False
 
     if args.wandb:
-        wandb.init(name = "MEMT_test500_"+str(exp_id if seed is None else seed), project = args.name, group = f"minigrid_{args.env_name}", mode="offline", job_type=args.exp_name, config=vars(args))
+        wandb.init(name = "MEMT_test2005_"+str(exp_id if seed is None else seed), project = args.name, group = f"minigrid_{args.env_name}", mode="offline", job_type=args.exp_name, config=vars(args))
 
     # Agent
     agent = MEMTPPO(env_list[0].info, policy, n_contexts=n_contexts, **alg_params)
@@ -305,6 +305,10 @@ if __name__ == '__main__':
 
     with open(os.path.join(save_dir, 'args.pkl'), 'wb') as f:
         pickle.dump(args, f)
+
+    if args.debug:
+        args.exp = 1
+        args.seed = None
 
     if args.seed is not None:
         out = Parallel(n_jobs=-1)(delayed(run_experiment)(args, save_dir, i, s)
