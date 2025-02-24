@@ -138,7 +138,7 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
     lam=.95
     alg_params = dict(
             n_epochs_policy=8,
-            batch_size=batch_size*n_contexts,
+            batch_size=batch_size*args.n_experts,
             eps_ppo=eps,
             ent_coeff=ent_coeff,
             lam=lam,

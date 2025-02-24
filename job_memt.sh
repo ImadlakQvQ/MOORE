@@ -23,8 +23,8 @@ COEFF=$3
 
 python run_minigrid_ppo_memt.py  --n_exp 1 --name TEST_ --env_name MT3 --exp_name debug \
                             --n_epochs 2 --n_steps 2000  --n_episodes_test 16 --train_frequency 2000 --lr_actor 6e-3 --lr_critic 1e-3 \
-                            --critic_network MiniGridPPOMixtureMHNetwork --critic_n_features 128 --orthogonal --n_experts 4 \
-                            --n_action_experts 4 --actor_network MiniGridPPOMEMTNetwork --actor_n_features 128 \
+                            --critic_network MiniGridPPOMEMTActorNetwork --critic_n_features 128 --orthogonal --n_experts 4 \
+                            --n_action_experts 4 --actor_network MiniGridPPOMEMTActorNetwork --actor_n_features 128 \
                             --batch_size 256 --gamma 0.99 --coeff_experts 150 --save --wandb
 # python run_minigrid_ppo_mt.py  --n_exp 9 --name TEST_\
 #                             --env_name ${ENV_NAME} --exp_name ppo_mt_moore_multihead_${N_EXPERTS}e \

@@ -10,7 +10,7 @@ from moore.core import MEMTCore
 from moore.algorithms.actor_critic import MEMTPPO
 from moore.policy import MEMTBoltzmannTorchPolicy
 from moore.environments import MEMTMiniGrid as MiniGrid
-from moore.utils.argparser import argparser
+from moore.utils.argparser_ import argparser
 from moore.utils.dataset import get_stats
 import moore.utils.networks_ppo as Network
 # visulization
@@ -136,7 +136,7 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
     lam=.95
     alg_params = dict(
             n_epochs_policy=8,
-            batch_size=batch_size*n_contexts,
+            batch_size=batch_size*args.n_experts,
             eps_ppo=eps,
             ent_coeff=ent_coeff,
             lam=lam,
@@ -159,18 +159,16 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
     # Agent
     agent = MEMTPPO(env_list[0].info, policy, n_contexts=n_contexts, **alg_params)
 
-    if args.mt:
-        single_logger.info("Loading Shared Backbone and Task Encoder of Critic Network")
-        agent._V.model.network.save_shared_backbone(os.path.join(save_dir, "critic_model", "critic_backbone.pth"))
-        agent._V.model.network.save_task_encoder(os.path.join(save_dir, "critic_model", "critic_task_encoder.pth"))
-        single_logger.info("Loading Shared Backbone and Task Encoder of Actor Network")
-        agent.policy._logits.model.network.save_shared_backbone(os.path.join(save_dir, "actor_model", "actor_backbone.pth"))
-        agent.policy._logits.model.network.save_task_encoder(os.path.join(save_dir, "actor_model", "actor_task_encoder.pth"))
+    # if args.mt:
+    single_logger.info("Loading Shared Backbone and Task Encoder of Actor Network")
+    agent.policy._logits.model.network.load_params(os.path.join(save_dir, "actor.pth"))
+    single_logger.info("Loading Shared Backbone and Task Encoder of Critic Network")
+    agent._V.model.network.load_params(os.path.join(save_dir, "critic.pth"))
+
 
     single_logger.info(agent._V.model.network)
     single_logger.info(agent.policy._logits.model.network)
 
-    os.makedirs(save_dir, exist_ok=True)
 
     # 定义agent和环境
     core = MEMTCore(agent, env_list)
@@ -299,21 +297,18 @@ if __name__ == '__main__':
         assert len(args.seed) == args.n_exp
 
     # logging               args.env_name=MT3
-    results_dir = os.path.join(args.results_dir, "minigrid", "MT", args.env_name)
+    results_dir = '/home/xz/program/MOORE/logs/minigrid/MT/MT3/debug_0.006_150'
     # TODO 确定实验名字 
     args.exp_name = f"{args.exp_name}_{args.lr_actor}_{args.coeff_experts}"
-    logger = Logger(args.exp_name, results_dir=results_dir, log_console=True, use_timestamp=args.use_timestamp)
-    logger.strong_line()
-    logger.info('Experiment Algorithm: ' + MEMTPPO.__name__)
-    logger.info('Experiment Environment: ' + args.env_name)
-    logger.info('Experiment Type: ' + "MEMT_test")
-    logger.info("Experiment Name: " + args.exp_name)
-    logger.info("Experiment parameters: " + str(vars(args)))
-    save_dir = logger.path
-
-    with open(os.path.join(save_dir, 'args.pkl'), 'wb') as f:
-        pickle.dump(args, f)
-
+    # logger = Logger(args.exp_name, results_dir=results_dir, log_console=True, use_timestamp=args.use_timestamp)
+    # logger.strong_line()
+    # logger.info('Experiment Algorithm: ' + MEMTPPO.__name__)
+    # logger.info('Experiment Environment: ' + args.env_name)
+    # logger.info('Experiment Type: ' + "MEMT_test")
+    # logger.info("Experiment Name: " + args.exp_name)
+    # logger.info("Experiment parameters: " + str(vars(args)))
+    # save_dir = logger.path
+    save_dir = results_dir
     if args.debug:
         args.exp = 1
         args.seed = None
