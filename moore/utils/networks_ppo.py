@@ -411,6 +411,13 @@ class MiniGridPPOMixtureSHNetwork(nn.Module):
 
     def save_task_encoder(self, save_dir):
         torch.save(self._task_encoder.state_dict(), save_dir)
+    
+    def save_params(self, save_dir):
+        torch.save(self.state_dict(), save_dir)
+
+    def load_params(self, load_dir):
+        self.load_state_dict(torch.load(load_dir, map_location="cuda" if self._use_cuda else "cpu"))
+                 
 ###################################################################################################################################################
 
 class MiniGridPPOMEMTNetwork(nn.Module):
@@ -543,7 +550,13 @@ class MiniGridPPOMEMTNetwork(nn.Module):
         feat = self.cnn(state.float()).detach()
 
         return torch.permute(feat, (1,0,2)).cpu().numpy()
+    
+    def save_params(self, save_dir):
+        torch.save(self.state_dict(), save_dir)
 
+    def load_params(self, load_dir):
+        self.load_state_dict(torch.load(load_dir, map_location="cuda" if self._use_cuda else "cpu"))
+                             
     def save_shared_backbone(self, save_dir):
         torch.save(self.cnn.state_dict(), save_dir)
     

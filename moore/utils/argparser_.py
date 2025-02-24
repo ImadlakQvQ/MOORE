@@ -105,6 +105,7 @@ def argparser():
      arg_utils.add_argument('--seed', type=int, nargs = '+', help='Seed to be used.')
      arg_utils.add_argument('--coeff_experts', type=int, default = 200, help='Coefficient of experts.')
      # arg_utils.add_argument('--job_id', type=str, default ="Default", help='Slum Job id')
+     arg_utils.add_argument('--mt', action='store_true', help='multi task continuous training')
      args = parser.parse_args()
 
      return args

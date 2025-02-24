@@ -156,7 +156,7 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
         args.wandb = False
 
     if args.wandb:
-        wandb.init(name = f"{args.exp_name}_"+str(exp_id if seed is None else seed), project = args.name, group = f"minigrid_{args.env_name}", mode="offline", job_type=args.exp_name, config=vars(args))
+        wandb.init(name = f"{args.exp_name}_"+str(exp_id if seed is None else seed), project = args.name, group = f"{args.exp_name}", mode="offline", job_type=args.exp_name, config=vars(args))
 
     # Agent
     agent = MEMTPPO(env_list[0].info, policy, n_contexts=n_contexts, **alg_params)
@@ -222,7 +222,7 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
     
     # ---------------------------------------- 主程序 -----------------------------------
     # 默认100个epoch
-    for n in trange(n_epochs, desc=f"{mdp_c.env_name}"):
+    for n in trange(n_epochs, desc=f"{args.exp_name}"):
         core.eval = False
         # beta是一个scale factor，乘在actor的输出上，还不知道是用来干啥的
         agent.policy.set_beta(beta)
@@ -272,15 +272,17 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
         wandb.finish()
 
     if args.save:
-        os.makedirs(os.path.join(save_dir, "critic_model"), exist_ok=True)
-        os.makedirs(os.path.join(save_dir, "actor_model"), exist_ok=True)
+        # os.makedirs(os.path.join(save_dir, "critic_model"), exist_ok=True)
+        # os.makedirs(os.path.join(save_dir, "actor_model"), exist_ok=True)
 
         single_logger.info("Saving Shared Backbone and Task Encoder of Critic Network")
-        agent._V.model.network.save_shared_backbone(os.path.join(save_dir, "critic_model", "critic_backbone.pth"))
-        agent._V.model.network.save_task_encoder(os.path.join(save_dir, "critic_model", "critic_task_encoder.pth"))
+        agent._V.model.network.save_params(os.path.join(save_dir, "critic.pth"))
+        # agent._V.model.network.save_shared_backbone(os.path.join(save_dir, "critic_model", "critic_backbone.pth"))
+        # agent._V.model.network.save_task_encoder(os.path.join(save_dir, "critic_model", "critic_task_encoder.pth"))
         single_logger.info("Saving Shared Backbone and Task Encoder of Actor Network")
-        agent.policy._logits.model.network.save_shared_backbone(os.path.join(save_dir, "actor_model", "actor_backbone.pth"))
-        agent.policy._logits.model.network.save_task_encoder(os.path.join(save_dir, "actor_model", "actor_task_encoder.pth"))
+        agent.policy._logits.model.network.save_params(os.path.join(save_dir, "actor.pth"))
+        # agent.policy._logits.model.network.save_shared_backbone(os.path.join(save_dir, "actor_model", "actor_backbone.pth"))
+        # agent.policy._logits.model.network.save_task_encoder(os.path.join(save_dir, "actor_model", "actor_task_encoder.pth"))
 
 
     return metrics
