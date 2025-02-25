@@ -10,7 +10,7 @@ from moore.core import MEMTCore
 from moore.algorithms.actor_critic import MEMTPPO
 from moore.policy import MEMTBoltzmannTorchPolicy
 from moore.environments import MEMTMiniGrid as MiniGrid
-from moore.utils.argparser import argparser
+from moore.utils.argparser_memt import argparser
 from moore.utils.dataset import get_stats
 import moore.utils.networks_ppo as Network
 # visulization
@@ -49,6 +49,7 @@ MT_EXP = {
     }
 }
 
+
 def run_experiment(args, save_dir, exp_id = 0, seed = None):
     """
         Run the experiment,
@@ -59,73 +60,60 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
 
     np.random.seed()
 
+    if args.debug:
+        args.batch_size = 8
+        args.n_epochs = 2
+        args.n_steps = 150
+        args.n_steps_test = 100
+        args.n_episodes_test = 1
+        args.wandb = False
+
     single_logger = Logger(f"exp_{exp_id if seed is None else seed}", results_dir=save_dir, log_console=True)
     save_dir = single_logger.path
 
-    n_epochs = args.n_epochs
-    n_steps = args.n_steps
-    n_episodes_test = args.n_episodes_test
-
-    # MDP
+    # Environment
     env_names = MT_EXP[args.env_name]
-
-    horizon = args.horizon
-    gamma = args.gamma
-    gamma_eval = args.gamma_eval
-    # MT#中有几个 list中就有几个
     env_list = []
     descriptions = []
     for env_name_i, description_i in env_names.items():
-        env_list.append(MiniGrid(env_name_i, horizon = horizon, gamma=gamma, render_mode=args.render_mode, description=description_i))
+        env_list.append(MiniGrid(env_name_i, horizon = args.horizon, gamma=args.gamma, render_mode=args.render_mode, description=description_i))
         descriptions.append(description_i)
-
-    # 设置任务空间维度
-    n_contexts = len(env_list)
+    num_envs = len(env_list)
     descriptions = np.array(descriptions)
-    batch_size = args.batch_size
-    train_frequency = args.train_frequency
 
-    # TODO: actor 
-    actor_network = getattr(Network, args.actor_network)
-    actor_n_features = args.actor_n_features#
-    lr_actor = args.lr_actor 
-    beta=1.
-    
-    actor_params = dict(beta=beta,
-                        n_features=actor_n_features,
-                        n_contexts=n_contexts,
+    # Actor
+    actor_params = dict(beta=args.beta,
+                        n_features=args.n_features,
+                        n_contexts=num_envs,
                         orthogonal=args.orthogonal,
-                        learning_rate = lr_actor,
+                        learning_rate = args.lr_actor,
                         n_experts=args.n_experts,
                         n_action_experts=args.n_action_experts,
                         use_cuda=args.use_cuda,
                         descriptions=descriptions,
                         coeff_experts=args.coeff_experts
                         )
-    # 是在同一个环境中执行不同的任务，所以观测空间与动作空间相同
+
     policy = MEMTBoltzmannTorchPolicy(
-            actor_network,
-            env_list[0].info.observation_space.shape,
-            (env_list[0].info.action_space.n,),
-            **actor_params)
+                                    getattr(Network, "MiniGridPPOMEMTNetwork"),
+                                    env_list[0].info.observation_space.shape,
+                                    (env_list[0].info.action_space.n,),
+                                    **actor_params
+                                    )
     
-    actor_optimizer = {'class': optim.Adam, 'params': {'lr': lr_actor, 'betas': (0.9, 0.999)}}#
+    actor_optimizer = {'class': optim.Adam, 'params': {'lr': args.lr_actor, 'betas': (0.9, 0.999)}}#
     
-    # TODO critic
-    critic_network = getattr(Network, args.critic_network)
-    critic_n_features = args.critic_n_features#
-    lr_critic = args.lr_critic #
-    critic_fit_params = None
+    # TODO 
     critic_params = dict(
-                        network=critic_network,
+                        network=getattr(Network, "MiniGridPPOMEMTNetwork"),
                         optimizer={
                             'class': optim.Adam, 
-                            'params': {'lr': lr_critic, 'betas': (0.9, 0.999)}},
+                            'params': {'lr': args.lr_critic, 'betas': (0.9, 0.999)}},
                         loss=F.mse_loss,
-                        n_features=critic_n_features,
-                        n_contexts=n_contexts,
+                        n_features=args.n_features,
+                        n_contexts=num_envs,
                         orthogonal=args.orthogonal,
-                        learning_rate = lr_critic,
+                        learning_rate = args.lr_critic,
                         n_experts=args.n_experts,
                         input_shape = env_list[0].info.observation_space.shape,
                         output_shape=(1,),
@@ -138,28 +126,20 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
     lam=.95
     alg_params = dict(
             n_epochs_policy=8,
-            batch_size=batch_size*args.n_experts,
+            batch_size=args.batch_size*args.n_experts,
             eps_ppo=eps,
             ent_coeff=ent_coeff,
             lam=lam,
             actor_optimizer = actor_optimizer,
             critic_params = critic_params,
-            critic_fit_params=critic_fit_params,
+            critic_fit_params=None,
             descriptions=descriptions)
-
-    if args.debug:
-        batch_size = 8
-        n_epochs = 2
-        n_steps = 150
-        n_steps_test = 100
-        n_episodes_test = 1
-        args.wandb = False
 
     if args.wandb:
         wandb.init(name = f"{args.exp_name}_"+str(exp_id if seed is None else seed), project = args.name, group = f"{args.exp_name}", mode="offline", job_type=args.exp_name, config=vars(args))
 
     # Agent
-    agent = MEMTPPO(env_list[0].info, policy, n_contexts=n_contexts, **alg_params)
+    agent = MEMTPPO(env_list[0].info, policy, n_contexts=num_envs, **alg_params)
 
     single_logger.info(agent._V.model.network)
     single_logger.info(agent.policy._logits.model.network)
@@ -186,12 +166,12 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
     for c, mdp_c in enumerate(env_list):
         # random policy evaluation
         core.eval = True
-        agent.policy.set_beta(beta)
+        agent.policy.set_beta(args.beta)
         core.current_idx = c
         description = mdp_c.description
         
-        dataset = core.evaluate(n_episodes=n_episodes_test, render=args.render_eval, quiet=True)
-        min_J, max_J, mean_J, mean_discounted_J, _ = get_stats(dataset, gamma, gamma_eval)
+        dataset = core.evaluate(n_episodes=args.n_episodes_test, render=args.render_eval, quiet=True)
+        min_J, max_J, mean_J, mean_discounted_J, _ = get_stats(dataset, args.gamma, args.gamma_eval)
         metrics[mdp_c.env_name]["MinReturn"].append(min_J)
         metrics[mdp_c.env_name]["MaxReturn"].append(max_J)
         metrics[mdp_c.env_name]["AverageReturn"].append(mean_J)
@@ -213,31 +193,31 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
                         f'{mdp_c.env_name}/AverageDiscountedReturn':mean_discounted_J,
                         }, step = 0, commit=False)
     
-    metrics["all_minigrid"]["AverageReturn"].append(current_all_average_return/ n_contexts)
-    metrics["all_minigrid"]["AverageDiscountedReturn"].append(current_all_average_discounted_return/ n_contexts)
+    metrics["all_minigrid"]["AverageReturn"].append(current_all_average_return/ num_envs)
+    metrics["all_minigrid"]["AverageDiscountedReturn"].append(current_all_average_discounted_return/ num_envs)
 
     if args.wandb:
-        wandb.log({"all_minigrid/AverageReturn": current_all_average_return/ n_contexts, 
-                   "all_minigrid/AverageDiscountedReturn": current_all_average_discounted_return/ n_contexts}, step = 0, commit=True)
+        wandb.log({"all_minigrid/AverageReturn": current_all_average_return/ num_envs, 
+                   "all_minigrid/AverageDiscountedReturn": current_all_average_discounted_return/ num_envs}, step = 0, commit=True)
     
     # ---------------------------------------- 主程序 -----------------------------------
     # 默认100个epoch
-    for n in trange(n_epochs, desc=f"{args.exp_name}"):
+    for n in trange(args.n_epochs, desc=f"{args.exp_name}"):
         core.eval = False
         # beta是一个scale factor，乘在actor的输出上，还不知道是用来干啥的
-        agent.policy.set_beta(beta)
+        agent.policy.set_beta(args.beta)
         # quiet 不会出现这么多bar；n_steps epoch内的步数；
-        core.learn(n_steps=n_steps, n_steps_per_fit=train_frequency, render=args.render_train, quiet=True)
+        core.learn(n_steps=args.n_steps, n_steps_per_fit=args.train_frequency, render=args.render_train, quiet=True)
 
         current_all_average_return = 0.0
         current_all_average_discounted_return = 0.0
         # --------------------------------- 训练完了之后，再次评估 ----------------------------------------
         for c, mdp_c in enumerate(env_list):
             core.eval = True
-            agent.policy.set_beta(beta)
+            agent.policy.set_beta(args.beta)
             core.current_idx = c
-            dataset = core.evaluate(n_episodes=n_episodes_test, render=(args.render_eval if n%args.render_interval == 0 and exp_id == 0 else False), quiet=True)
-            min_J, max_J, mean_J, mean_discounted_J, _ = get_stats(dataset, gamma, gamma_eval)
+            dataset = core.evaluate(n_episodes=args.n_episodes_test, render=(args.render_eval if n%args.render_interval == 0 and exp_id == 0 else False), quiet=True)
+            min_J, max_J, mean_J, mean_discounted_J, _ = get_stats(dataset, args.gamma, args.gamma_eval)
             metrics[mdp_c.env_name]["MinReturn"].append(min_J)
             metrics[mdp_c.env_name]["MaxReturn"].append(max_J)
             metrics[mdp_c.env_name]["AverageReturn"].append(mean_J)
@@ -246,13 +226,6 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
             current_all_average_return+=mean_J
             current_all_average_discounted_return+=mean_discounted_J
 
-            # single_logger.epoch_info(n+1,
-            #                     EnvName = mdp_c.env_name,
-            #                     MinReturn=min_J,
-            #                     MaxReturn = max_J,
-            #                     AverageReturn = mean_J,
-            #                     AverageDiscountedReturn = mean_discounted_J,
-            #                     )
             if args.wandb:
                 wandb.log({ f'{mdp_c.env_name}/MinReturn': min_J,
                             f'{mdp_c.env_name}/MaxReturn': max_J,
@@ -260,30 +233,20 @@ def run_experiment(args, save_dir, exp_id = 0, seed = None):
                             f'{mdp_c.env_name}/AverageDiscountedReturn':mean_discounted_J,
                             }, step = n+1, commit=False)  
 
-        metrics["all_minigrid"]["AverageReturn"].append(current_all_average_return/ n_contexts)
-        metrics["all_minigrid"]["AverageDiscountedReturn"].append(current_all_average_discounted_return/ n_contexts)
+        metrics["all_minigrid"]["AverageReturn"].append(current_all_average_return/ num_envs)
+        metrics["all_minigrid"]["AverageDiscountedReturn"].append(current_all_average_discounted_return/ num_envs)
 
         if args.wandb:
-            wandb.log({"all_minigrid/AverageReturn": current_all_average_return/ n_contexts, 
-                       "all_minigrid/AverageDiscountedReturn": current_all_average_discounted_return/ n_contexts}, step = n+1, commit=True)
+            wandb.log({"all_minigrid/AverageReturn": current_all_average_return/ num_envs, 
+                       "all_minigrid/AverageDiscountedReturn": current_all_average_discounted_return/ num_envs}, step = n+1, commit=True)
 
     # ---------------------------------------- 保存参数  ----------------------------------------
     if args.wandb:
         wandb.finish()
 
     if args.save:
-        # os.makedirs(os.path.join(save_dir, "critic_model"), exist_ok=True)
-        # os.makedirs(os.path.join(save_dir, "actor_model"), exist_ok=True)
-
-        single_logger.info("Saving Shared Backbone and Task Encoder of Critic Network")
-        agent._V.model.network.save_params(os.path.join(save_dir, "critic.pth"))
-        # agent._V.model.network.save_shared_backbone(os.path.join(save_dir, "critic_model", "critic_backbone.pth"))
-        # agent._V.model.network.save_task_encoder(os.path.join(save_dir, "critic_model", "critic_task_encoder.pth"))
-        single_logger.info("Saving Shared Backbone and Task Encoder of Actor Network")
-        agent.policy._logits.model.network.save_params(os.path.join(save_dir, "actor.pth"))
-        # agent.policy._logits.model.network.save_shared_backbone(os.path.join(save_dir, "actor_model", "actor_backbone.pth"))
-        # agent.policy._logits.model.network.save_task_encoder(os.path.join(save_dir, "actor_model", "actor_task_encoder.pth"))
-
+        single_logger.info("Parameters saved")
+        agent.save_params(save_dir)
 
     return metrics
 

@@ -1,5 +1,5 @@
 import numpy as np
-
+import os
 import torch
 import torch.nn.functional as F
 
@@ -200,4 +200,10 @@ class MEMTPPO(Agent):
     def _post_load(self):
         if self.policy_optimizer is not None:
             update_optimizer_parameters(self.policy_optimizer, list(self.policy.parameters()))
+    
+    def save_params(self, save_dir):
+        self._V.model.network.save_params(os.path.join(save_dir, "critic.pth"))
+        self.policy._logits.model.network.save_params(os.path.join(save_dir, "actor.pth"))
+        return 
+    
     

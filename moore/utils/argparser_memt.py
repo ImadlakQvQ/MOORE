@@ -48,14 +48,7 @@ def argparser():
      arg_alg.add_argument('--dropout', action='store_true',
                             help='Use dropout in the network')#
      arg_alg.add_argument("--beta", type=float, default=1.0)
-     arg_alg.add_argument("--actor_network", type=str, default="MiniGridPPOMEMTNetwork")
-     arg_alg.add_argument("--actor_mu_network", type=str, default="ActorNetwork")
-     arg_alg.add_argument("--actor_sigma_network", type=str, default="ActorNetwork")
-     arg_alg.add_argument("--actor_n_features", type=int, nargs='+', default=[128])
-     arg_alg.add_argument("--actor_mu_n_features", type=int, nargs='+', default=[])
-     arg_alg.add_argument("--actor_sigma_n_features", type=int, nargs='+', default=[])
-     arg_alg.add_argument("--critic_network", type=str, default="MiniGridPPOMixtureMHNetwork")
-     arg_alg.add_argument("--critic_n_features", type=int, nargs='+', default=[128])
+     arg_alg.add_argument("--n_features", type=int, nargs='+', default=[128])
      arg_alg.add_argument("--lr_actor", type=float, default=3e-4)
      arg_alg.add_argument("--lr_critic", type=float, default=3e-4)
      arg_alg.add_argument("--lr_alpha", type=float, default=2e-6)

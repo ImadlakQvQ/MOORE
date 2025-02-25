@@ -291,7 +291,7 @@ class MEMTBoltzmannTorchPolicy(TorchPolicy):
 
         self._action_dim = output_shape[0]
         self._predict_params = dict()
-
+            
         self._logits = Regressor(TorchApproximator, input_shape, output_shape,
                                  network=network, use_cuda=use_cuda, **params)
         self._beta = to_parameter(beta)
