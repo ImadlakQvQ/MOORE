@@ -508,24 +508,13 @@ class MiniGridPPOMEMTNetwork(nn.Module):
         if self._use_cuda:
             self.descriptions = self.descriptions.cuda()
             c = c.cuda()
-        # c_onehot = F.one_hot(c, num_classes = self._n_contexts)
         task_embedding = self.descriptions[c]   # [batch, context_len]
-        
-        # task-weight and task-embeddings
         w = self._task_encoder(task_embedding.float()).unsqueeze(-2)             # [batch, 1, n_experts]
-
-        # image embeddings
         features_cnn = self.cnn(state.float())                          # [n_experts, batch, n_features]    
         features_cnn = torch.permute(features_cnn, (1,0,2))            # [batch, n_experts, n_features]
-
-        # task-image embeddings
         features_cnn = w@features_cnn                                # [batch, 1, n_features]
         features_cnn = features_cnn.squeeze(1)                     # [batch, n_features]
-
-        # only activation after weighting the features 
         features_cnn = torch.tanh(features_cnn)                     # [batch, n_features]
-
-        # [batch, context_len + n_features]--->[batch, 4]
 
         action_weights = self.action_router(torch.cat((task_embedding.reshape(features_cnn.shape[0],-1).to(features_cnn.dtype), features_cnn), dim=1))
         action_weights = torch.softmax(action_weights, dim=1)
@@ -535,20 +524,12 @@ class MiniGridPPOMEMTNetwork(nn.Module):
             f = f.cuda()
         
         for i in range(self.n_action_experts):
-            # 通过每个 expert head 处理特征
             expert_out = self._output_heads[i](features_cnn)  # [batch, self._n_output]
-            
-            # 存储每个 expert 的输出
             f[:, i * self._n_output : (i + 1) * self._n_output] = expert_out
-
-        # MoE: 根据 action_weights 进行专家加权
-        
-        # 计算最终动作决策
         f = f.view(state.shape[0], self.n_action_experts, self._n_output)  # [batch, num_experts, n_output]
         f = self.action_transformer(f)
         f = torch.einsum("bk, bkn -> bn", action_weights, f)  # [batch, n_output]
         f = torch.concat((f, action_weights), dim=1).reshape(-1, self._n_output + self.n_action_experts)
-
         return f
     
     def compute_features(self, state):
